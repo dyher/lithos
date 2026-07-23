@@ -1,4 +1,22 @@
+# Build artifacts
 build/
 *.o
 *.a
 *.so
+*.dylib
+*.exe
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp / Test
+/tmp/
+*.log
