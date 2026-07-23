@@ -1,2 +1,0 @@
-/usr/bin/ar qc libasync.a CMakeFiles/async.dir/async_queue.c.o CMakeFiles/async.dir/console_mode.c.o CMakeFiles/async.dir/console_worker.c.o CMakeFiles/async.dir/async_runtime_epoll.c.o CMakeFiles/async.dir/async_worker_pthread.c.o
-/usr/bin/ranlib libasync.a

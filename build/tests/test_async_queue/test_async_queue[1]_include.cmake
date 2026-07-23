@@ -1,5 +1,0 @@
-if(EXISTS "/home/tiny/neolith/build/tests/test_async_queue/test_async_queue[1]_tests.cmake")
-  include("/home/tiny/neolith/build/tests/test_async_queue/test_async_queue[1]_tests.cmake")
-else()
-  add_test(test_async_queue_NOT_BUILT test_async_queue_NOT_BUILT)
-endif()

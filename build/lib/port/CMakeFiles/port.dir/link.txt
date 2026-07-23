@@ -1,2 +1,0 @@
-/usr/bin/ar qc libport.a CMakeFiles/port.dir/stpcpy.c.o CMakeFiles/port.dir/strput.c.o CMakeFiles/port.dir/xcalloc.c.o CMakeFiles/port.dir/xstrdup.c.o CMakeFiles/port.dir/xvasprintf.c.o CMakeFiles/port.dir/socket_comm.c.o CMakeFiles/port.dir/timer.cpp.o CMakeFiles/port.dir/sync.cpp.o CMakeFiles/port.dir/crypt.c.o
-/usr/bin/ranlib libport.a

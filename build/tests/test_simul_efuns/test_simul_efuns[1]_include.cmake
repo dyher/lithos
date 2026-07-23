@@ -1,5 +1,0 @@
-if(EXISTS "/home/tiny/neolith/build/tests/test_simul_efuns/test_simul_efuns[1]_tests.cmake")
-  include("/home/tiny/neolith/build/tests/test_simul_efuns/test_simul_efuns[1]_tests.cmake")
-else()
-  add_test(test_simul_efuns_NOT_BUILT test_simul_efuns_NOT_BUILT)
-endif()

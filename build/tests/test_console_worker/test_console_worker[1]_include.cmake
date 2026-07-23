@@ -1,5 +1,0 @@
-if(EXISTS "/home/tiny/neolith/build/tests/test_console_worker/test_console_worker[1]_tests.cmake")
-  include("/home/tiny/neolith/build/tests/test_console_worker/test_console_worker[1]_tests.cmake")
-else()
-  add_test(test_console_worker_NOT_BUILT test_console_worker_NOT_BUILT)
-endif()

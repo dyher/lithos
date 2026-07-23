@@ -1,5 +1,0 @@
-if(EXISTS "/home/tiny/neolith/build/tests/test_string_operators/test_string_operators[1]_tests.cmake")
-  include("/home/tiny/neolith/build/tests/test_string_operators/test_string_operators[1]_tests.cmake")
-else()
-  add_test(test_string_operators_NOT_BUILT test_string_operators_NOT_BUILT)
-endif()
