@@ -2300,8 +2300,10 @@ void setup_simulate() {
   if (-1 == CHDIR (MAIN_OPTION(mudlib_dir_absolute)))
     {
       debug_perror ("chdir", MAIN_OPTION(mudlib_dir_absolute));
-      LOG_FATAL ("{}\t***** cannot change working directory to \"%s\"\n", MAIN_OPTION(mudlib_dir_absolute));
-      exit (EXIT_FAILURE);
+      LOG_NOTICE ("{}\t⚠ chdir to \"%s\" failed, continuing in current directory", MAIN_OPTION(mudlib_dir_absolute));
+      /* Non-fatal: allow console mode and testing in restricted environments */
+
+
     }
   LOG_NOTICE ("{}\tmudlib directory: \"%s\"", MAIN_OPTION(mudlib_dir_absolute));
 

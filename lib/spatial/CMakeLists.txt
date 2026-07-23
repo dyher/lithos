@@ -1,0 +1,6 @@
+add_library(neolith_spatial STATIC spatial.c)
+target_include_directories(neolith_spatial PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(WIN32)
+    target_compile_definitions(neolith_spatial PRIVATE SPATIAL_EXPORTS)
+endif()
+set_target_properties(neolith_spatial PROPERTIES POSITION_INDEPENDENT_CODE ON)

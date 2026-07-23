@@ -1,0 +1,5 @@
+if(EXISTS "/home/tiny/neolith/build/tests/test_stralloc/test_stralloc[1]_tests.cmake")
+  include("/home/tiny/neolith/build/tests/test_stralloc/test_stralloc[1]_tests.cmake")
+else()
+  add_test(test_stralloc_NOT_BUILT test_stralloc_NOT_BUILT)
+endif()

@@ -4,7 +4,7 @@ add_executable(test_lpc_lexer
     test_lpc_lexer.cpp
     test_preprocess.cpp
 )
-target_link_libraries(test_lpc_lexer PRIVATE stem GTest::gtest_main)
+target_link_libraries(test_lpc_lexer PRIVATE stem ffi_interface GTest::gtest_main)
 add_dependencies(test_lpc_lexer lpc_grammar)
 
 # setup testing data

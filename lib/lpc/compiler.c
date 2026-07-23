@@ -1839,7 +1839,21 @@ program_t *compile_file (int fd, const char *source_file, const char* pre_text) 
   prog = epilog ();
 
   if (prog)
+    {
+      /* Post-compile: scan function table for well-known applies */
+      prog->heart_beat = -1;
+      for (function_number_t j = 0; j < prog->num_functions_defined; j++)
+        {
+          const char *fname = prog->function_table[j].name;
+          if (fname && strcmp(fname, "heart_beat") == 0)
+            {
+              prog->heart_beat = (int)j;
+              opt_trace (TT_COMPILE|2, "found heart_beat() at index %d", j);
+              break;
+            }
+        }
     opt_trace (TT_COMPILE|2, "finished compiling: \"%s\"", source_file);
+    }
   guard = 0;
   return prog;
 }

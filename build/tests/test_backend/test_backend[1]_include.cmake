@@ -1,0 +1,5 @@
+if(EXISTS "/home/tiny/neolith/build/tests/test_backend/test_backend[1]_tests.cmake")
+  include("/home/tiny/neolith/build/tests/test_backend/test_backend[1]_tests.cmake")
+else()
+  add_test(test_backend_NOT_BUILT test_backend_NOT_BUILT)
+endif()

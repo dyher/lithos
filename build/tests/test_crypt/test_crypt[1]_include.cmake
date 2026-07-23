@@ -1,0 +1,5 @@
+if(EXISTS "/home/tiny/neolith/build/tests/test_crypt/test_crypt[1]_tests.cmake")
+  include("/home/tiny/neolith/build/tests/test_crypt/test_crypt[1]_tests.cmake")
+else()
+  add_test(test_crypt_NOT_BUILT test_crypt_NOT_BUILT)
+endif()

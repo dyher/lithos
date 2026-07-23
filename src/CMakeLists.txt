@@ -1,4 +1,7 @@
 # src/CMakeLists.txt
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FFI REQUIRED libffi)
+
 
 # The "stem" target is the collection of object files (CMake object library)
 # that includes everything we need to build the LPMud driver. It can be linked
@@ -19,6 +22,12 @@ set(stem_SOURCES
     error_context.cpp
     frame.cpp
     interpret.c
+    ffi_efun.cpp
+    spatial_efun.c
+    aoi_efun.c
+    lj_ffi/lj_ffi_type.cpp
+    lj_ffi/lj_ffi_cdef.cpp
+    lj_ffi/lj_ffi_call.cpp
     dxalloc.cpp
     outbuf.c
     simul_efun.c
@@ -28,7 +37,7 @@ set(stem_SOURCES
     stralloc.c
 )
 add_library(stem OBJECT ${stem_SOURCES})
-target_link_libraries(stem PUBLIC port logger misc lpc efuns rc socket curl async)
+target_link_libraries(stem PUBLIC port logger misc lpc efuns rc socket curl async neolith_spatial)
 if(TARGET c-ares::cares)
 	target_compile_definitions(stem PRIVATE CARES_NO_DEPRECATED)
     target_link_libraries(stem PUBLIC c-ares::cares)
@@ -41,4 +50,9 @@ target_include_directories(stem PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}) # for unit-t
 # ================================================================
 # build neolith executable
 add_executable(neolith main.c ${neolith_SOURCES})
-target_link_libraries(neolith PRIVATE stem)
+# Create interface target for FFI so all stem consumers get it
+add_library(ffi_interface INTERFACE)
+target_link_libraries(ffi_interface INTERFACE ${FFI_LIBRARIES})
+target_include_directories(ffi_interface INTERFACE ${FFI_INCLUDE_DIRS})
+
+target_link_libraries(neolith PRIVATE stem ffi_interface)

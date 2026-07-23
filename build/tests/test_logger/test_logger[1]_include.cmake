@@ -1,0 +1,5 @@
+if(EXISTS "/home/tiny/neolith/build/tests/test_logger/test_logger[1]_tests.cmake")
+  include("/home/tiny/neolith/build/tests/test_logger/test_logger[1]_tests.cmake")
+else()
+  add_test(test_logger_NOT_BUILT test_logger_NOT_BUILT)
+endif()

@@ -8,7 +8,7 @@ add_executable(test_backend
     test_console_queue_drain.cpp
 )
 
-target_link_libraries(test_backend PRIVATE stem GTest::gtest_main)
+target_link_libraries(test_backend PRIVATE stem ffi_interface GTest::gtest_main)
 
 # setup testing data
 # (the default working directory is ${CMAKE_CURRENT_BINARY_DIR} when running tests)

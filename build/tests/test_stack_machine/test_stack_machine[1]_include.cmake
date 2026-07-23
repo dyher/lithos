@@ -1,0 +1,5 @@
+if(EXISTS "/home/tiny/neolith/build/tests/test_stack_machine/test_stack_machine[1]_tests.cmake")
+  include("/home/tiny/neolith/build/tests/test_stack_machine/test_stack_machine[1]_tests.cmake")
+else()
+  add_test(test_stack_machine_NOT_BUILT test_stack_machine_NOT_BUILT)
+endif()

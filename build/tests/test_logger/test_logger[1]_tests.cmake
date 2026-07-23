@@ -1,0 +1,7 @@
+add_test([=[LoggerTest.logMessage]=]  /home/tiny/neolith/build/tests/test_logger/test_logger [==[--gtest_filter=LoggerTest.logMessage]==] --gtest_also_run_disabled_tests)
+set_tests_properties([=[LoggerTest.logMessage]=]  PROPERTIES WORKING_DIRECTORY /home/tiny/neolith/build/tests/test_logger SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==] LABELS STEM)
+add_test([=[LoggerTest.debugMessage]=]  /home/tiny/neolith/build/tests/test_logger/test_logger [==[--gtest_filter=LoggerTest.debugMessage]==] --gtest_also_run_disabled_tests)
+set_tests_properties([=[LoggerTest.debugMessage]=]  PROPERTIES WORKING_DIRECTORY /home/tiny/neolith/build/tests/test_logger SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==] LABELS STEM)
+add_test([=[LoggerTest.debugSetLogWithDate]=]  /home/tiny/neolith/build/tests/test_logger/test_logger [==[--gtest_filter=LoggerTest.debugSetLogWithDate]==] --gtest_also_run_disabled_tests)
+set_tests_properties([=[LoggerTest.debugSetLogWithDate]=]  PROPERTIES WORKING_DIRECTORY /home/tiny/neolith/build/tests/test_logger SKIP_REGULAR_EXPRESSION [==[\[  SKIPPED \]]==] LABELS STEM)
+set(  test_logger_TESTS LoggerTest.logMessage LoggerTest.debugMessage LoggerTest.debugSetLogWithDate)

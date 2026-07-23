@@ -519,3 +519,77 @@ int seteuid(string | int);
 
 /* shutdown is at the end because it is only called once per boot cycle :) */
 void shutdown (void | int);
+
+/* ============================================================
+ * LJ-FFI Dynamic FFI Efuns (LuaJIT-compatible)
+ * ============================================================ */
+
+/* Parse C declarations and register types/functions */
+int ffi_cdef(string);
+
+/* Call a registered C function by name */
+mixed ffi_call(string, ...);
+
+/* Allocate a C struct/array instance */
+mixed ffi_new(string, void | mapping | mixed *);
+
+/* Get sizeof a registered type */
+int ffi_sizeof(string);
+
+/* Bind a symbol name to a C function pointer (via dlsym) */
+int ffi_bind(string, string);
+
+/* Free a buffer allocated by ffi_new */
+void ffi_free(int);
+
+/* Read a field from an FFI-allocated struct buffer */
+mixed ffi_get(int, string);
+
+/* Write a field to an FFI-allocated struct buffer */
+void ffi_set(int, string, mixed);
+
+
+/* Spatial index: create(config_mapping) */
+int spatial_create(mapping);
+
+/* Spatial index: destroy(handle) */
+void spatial_destroy(int);
+
+/* Spatial index: insert(handle, entity_id, pos_array{x,y,z}) */
+int spatial_insert(int, int, mixed);
+
+/* Spatial index: remove(handle, entity_id) */
+int spatial_remove(int, int);
+
+/* Spatial index: move(handle, entity_id, pos_array{x,y,z}) */
+int spatial_move(int, int, mixed);
+
+/* Spatial index: get_pos(handle, entity_id) -> {x,y,z} or 0 */
+mixed spatial_get_pos(int, int);
+
+/* Spatial index: query_radius(handle, x, y, radius) -> int[] */
+mixed spatial_query_radius(int, float, float, float);
+
+/* Spatial index: query_rect(handle, rect_mapping) -> int[] */
+mixed spatial_query_rect(int, mapping);
+
+/* Spatial index: stats(handle) -> mapping */
+mapping spatial_stats(int);
+
+/* AOI: create(spatial_handle, view_radius) */
+int aoi_create(int, float);
+
+/* AOI: destroy(handle) */
+void aoi_destroy(int);
+
+/* AOI: subscribe(handle, entity_id) */
+int aoi_subscribe(int, int);
+
+/* AOI: unsubscribe(handle, entity_id) */
+int aoi_unsubscribe(int, int);
+
+/* AOI: get_visible(handle, entity_id) -> int[] */
+mixed aoi_get_visible(int, int);
+
+/* AOI: get_delta(handle, entity_id) -> mapping */
+mixed aoi_get_delta(int, int);

@@ -1,0 +1,2 @@
+/usr/bin/ar qc libmisc.a CMakeFiles/misc.dir/avltree.c.o CMakeFiles/misc.dir/crc32.c.o CMakeFiles/misc.dir/envsubst.c.o CMakeFiles/misc.dir/filepath.cpp.o CMakeFiles/misc.dir/hash.c.o CMakeFiles/misc.dir/qsort.c.o CMakeFiles/misc.dir/scratchpad.c.o
+/usr/bin/ranlib libmisc.a

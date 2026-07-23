@@ -35,6 +35,8 @@ time_t boot_time = 0L;
 int slow_shutdown_to_do = 0;
 
 extern "C"
+extern "C" void init_ffi_efuns(void);
+
 int init_stem(int debug_level, unsigned long trace_flags, const char *config_file) {
   static main_options_t stem_opts;
 
@@ -60,6 +62,10 @@ int init_stem(int debug_level, unsigned long trace_flags, const char *config_fil
     strncpy (stem_opts.config_file, config_file, PATH_MAX - 1);
 
   g_main_options = &stem_opts; /* this is required throughout the code*/
+
+  /* Initialize FFI subsystem */
+  init_ffi_efuns();
+
   return 0;
 }
 
@@ -537,15 +543,19 @@ void preload_objects (int eflag) {
  *  and periodic tasks.
  */
 static void driver_loop(void) {
+#ifdef HEARTBEAT_INTERVAL
+  /* Use heartbeat interval as max polling timeout to ensure responsiveness
+   * even when async_runtime_wakeup() is unavailable (e.g., console mode). */
+  struct timeval timeout = { HEARTBEAT_INTERVAL / 1000000, (HEARTBEAT_INTERVAL % 1000000) };
+#else
   struct timeval timeout = {10, 0}; /* 10 seconds timeout for async_runtime_wait */
+#endif
   error_context_t econ;
   neolith::error_boundary_guard boundary(&econ);
-
   while (1)
     {
       try
-        {
-          bool has_pending_commands = false;
+        {          bool has_pending_commands = false;
           int connected_users = 0;
           int nb;
 
@@ -594,7 +604,6 @@ static void driver_loop(void) {
               debug_perror ("backend: do_comm_polling", 0);
               fatal ("backend: do_comm_polling failed.\n");
             }
-
           /* process I/O events (and opportunistic queue drains) */
           process_io();
 

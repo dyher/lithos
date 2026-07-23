@@ -7,7 +7,7 @@ add_executable(test_console_worker
 )
 
 # Link to the stem library and GoogleTest main entry point
-target_link_libraries(test_console_worker PRIVATE stem GTest::gtest_main)
+target_link_libraries(test_console_worker PRIVATE stem ffi_interface GTest::gtest_main)
 
 # Test discovery
 gtest_discover_tests(test_console_worker

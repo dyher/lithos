@@ -261,7 +261,6 @@ void call_heart_beat () {
   opt_trace (TT_BACKEND|1, "tick: current_time=%u", current_time);
   current_interactive = 0;
   num_hb_to_do = num_hb_objs;
-
   if ((MAIN_OPTION(timer_flags) & TIMER_FLAG_HEARTBEAT) && (num_hb_to_do > 0))
     {
       heart_beat_t *curr_hb;
@@ -291,6 +290,12 @@ void call_heart_beat () {
                 }
             }
           if (++heart_beat_index == num_hb_to_do)
+            break;
+
+          /* Tick budget: if next timer tick arrived mid-processing,
+           * yield to main loop to maintain responsiveness.
+           * Remaining heartbeats will be processed next tick. */
+          if (heart_beat_flag)
             break;
         }
       if (heart_beat_index < num_hb_to_do)

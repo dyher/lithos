@@ -8,7 +8,7 @@ add_executable(test_lpc_interpreter
     test_input_to_get_char.cpp
 )
 
-target_link_libraries(test_lpc_interpreter PRIVATE stem GTest::gtest_main)
+target_link_libraries(test_lpc_interpreter PRIVATE stem ffi_interface GTest::gtest_main)
 
 # setup testing data
 # (the default working directory is ${CMAKE_CURRENT_BINARY_DIR} when running tests)

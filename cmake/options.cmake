@@ -66,7 +66,7 @@ option(LOG_CATCHES "Send errors caught by catch() to the debug log" ON)
 # -------------------------------------------------------------------------
 # Performance tuning options
 # -------------------------------------------------------------------------
-set(HEARTBEAT_INTERVAL 2000000 CACHE STRING "Interval in microseconds between heartbeat() calls for individual LPC objects")
+set(HEARTBEAT_INTERVAL 100000 CACHE STRING "Interval in microseconds between heartbeat() calls for individual LPC objects")
 set(HEART_BEAT_CHUNK 32 CACHE STRING "Number of heart_beat list entries allocated at a time")
 
 option(FLUSH_OUTPUT_IMMEDIATELY "Write output to sockets immediately as generated (debug)" OFF)

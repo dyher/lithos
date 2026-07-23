@@ -1,0 +1,5 @@
+if(EXISTS "/home/tiny/neolith/build/tests/test_filepath/test_filepath[1]_tests.cmake")
+  include("/home/tiny/neolith/build/tests/test_filepath/test_filepath[1]_tests.cmake")
+else()
+  add_test(test_filepath_NOT_BUILT test_filepath_NOT_BUILT)
+endif()

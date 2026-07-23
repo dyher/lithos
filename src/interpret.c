@@ -745,6 +745,12 @@ static void do_loop_cond_number () {
  *  The effect is that all called efuns knows that they won't have destructed objects as
  *  arguments.
  */
+/* FFI extension opcode - not in auto-generated efuns_opcode.h */
+#define F_CALL_FFI 254
+
+/* FFI extension - defined in ffi_efun.c */
+extern void call_ffi_efun(int ffi_idx, int nargs);
+extern void init_ffi_efuns(void);
 void eval_instruction (const char *p) {
 
   int i, n;
@@ -2602,6 +2608,13 @@ void eval_instruction (const char *p) {
             CALL_THE_EFUN(instruction);
             continue;
           }
+        case F_CALL_FFI:
+          {
+            int ffi_idx = EXTRACT_UCHAR (pc++);
+            int ffi_nargs = EXTRACT_UCHAR (pc++);
+            call_ffi_efun (ffi_idx, ffi_nargs);
+          }
+          continue;
         default:
           /* optimized 1 arg efun */
           st_num_arg = 1;

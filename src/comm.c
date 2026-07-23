@@ -1079,11 +1079,9 @@ static void drain_console_queue_lines (void) {
   interactive_t *console_ip = all_users[0];
   if (!console_ip)
     {
-      opt_trace (TT_COMM|1, "Console user re-connecting\n");
-      init_console_user (true);
-      console_ip = all_users[0];
-      if (!console_ip)
-        return;
+      /* Console user not connected; skip draining to avoid blocking
+       * re-init in the hot path. Reconnection is handled at startup only. */
+      return;
     }
 
   char line_buffer[CONSOLE_MAX_LINE];
@@ -1226,7 +1224,6 @@ void process_io () {
         }
 #endif
     }
-
   /* Console completions are wake-only signals. We always drain the queue
    * here so queued lines are consumed even when completion edges are
    * coalesced or missed.

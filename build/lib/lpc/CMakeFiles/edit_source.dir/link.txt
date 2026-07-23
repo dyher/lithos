@@ -1,0 +1,1 @@
+/usr/bin/c++ -Wl,--dependency-file=CMakeFiles/edit_source.dir/link.d CMakeFiles/edit_source.dir/edit_source.c.o CMakeFiles/edit_source.dir/make_func.c.o -o edit_source  ../libgtest.a ../port/libport.a ../misc/libmisc.a /usr/lib/aarch64-linux-gnu/libcrypto.so ../libgtest.a

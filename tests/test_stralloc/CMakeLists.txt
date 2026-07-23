@@ -4,7 +4,7 @@ add_executable(test_stralloc
     test_stralloc.cpp
     test_stralloc_type_safety.cpp
 )
-target_link_libraries(test_stralloc PRIVATE stem GTest::gtest_main)
+target_link_libraries(test_stralloc PRIVATE stem ffi_interface GTest::gtest_main)
 
 gtest_discover_tests(test_stralloc
     PROPERTIES

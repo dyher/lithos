@@ -1,0 +1,2 @@
+/usr/bin/ar qc libneolith_spatial.a CMakeFiles/neolith_spatial.dir/spatial.c.o
+/usr/bin/ranlib libneolith_spatial.a

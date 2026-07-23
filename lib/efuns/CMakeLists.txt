@@ -29,6 +29,7 @@ set(efuns_SOURCES
     uids.c
     unsorted.c
     variable.c
+    ffi.c
 )
 
 add_library(efuns STATIC ${efuns_SOURCES})
@@ -55,3 +56,10 @@ if(HAVE_BOOST_JSON_HPP)
 else()
     target_link_libraries(efuns PUBLIC json)
 endif()
+
+# LJ-FFI: include path for lj_ffi headers
+target_include_directories(efuns PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+# LJ-FFI: dlsym support for ffi_bind()
+target_compile_definitions(efuns PRIVATE HAVE_DLSYM)
+target_link_libraries(efuns PUBLIC ${CMAKE_DL_LIBS})

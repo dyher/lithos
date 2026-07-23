@@ -1,0 +1,5 @@
+if(EXISTS "/home/tiny/neolith/build/tests/test_lpc_lexer/test_lpc_lexer[1]_tests.cmake")
+  include("/home/tiny/neolith/build/tests/test_lpc_lexer/test_lpc_lexer[1]_tests.cmake")
+else()
+  add_test(test_lpc_lexer_NOT_BUILT test_lpc_lexer_NOT_BUILT)
+endif()

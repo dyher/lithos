@@ -3,7 +3,7 @@
 add_executable(test_simul_efuns
     test_simul_efuns.cpp
 )
-target_link_libraries(test_simul_efuns PRIVATE stem GTest::gtest_main)
+target_link_libraries(test_simul_efuns PRIVATE stem ffi_interface GTest::gtest_main)
 
 # setup testing data
 # (the default working directory is ${CMAKE_CURRENT_BINARY_DIR} when running tests)
