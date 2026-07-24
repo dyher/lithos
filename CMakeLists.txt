@@ -210,6 +210,9 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
     endif()
 endif()
 
+# Enable ASM for fiber context switch
+enable_language(ASM)
+
 # Fiber portability layer
 set(FIBER_SOURCES "${CMAKE_SOURCE_DIR}/port/fiber_stack.c")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
@@ -227,4 +230,7 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|ARM64")
 endif()
 message(STATUS "FIBER_SOURCES=${FIBER_SOURCES}")
 add_library(fiber_port STATIC ${FIBER_SOURCES})
-target_include_directories(fiber_port PUBLIC "${CMAKE_SOURCE_DIR}/port")
+target_include_directories(fiber_port PUBLIC
+    "${CMAKE_SOURCE_DIR}/port"
+    "${CMAKE_SOURCE_DIR}"
+)

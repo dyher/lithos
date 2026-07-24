@@ -49,6 +49,7 @@ add_custom_target(lpc_grammar DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/grammar.h)
 set(lpc_SOURCES
     array.c
     gc.c
+    fiber.c
     buffer.c
     class.c
     compiler.c

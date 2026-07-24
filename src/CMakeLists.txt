@@ -55,4 +55,4 @@ add_library(ffi_interface INTERFACE)
 target_link_libraries(ffi_interface INTERFACE ${FFI_LIBRARIES})
 target_include_directories(ffi_interface INTERFACE ${FFI_INCLUDE_DIRS})
 
-target_link_libraries(neolith PRIVATE stem ffi_interface)
+target_link_libraries(neolith PRIVATE stem ffi_interface lpc fiber_port)
