@@ -5,6 +5,7 @@
 /* 92/04/18 - cleaned up stylistically by Sulam@TMI */
 
 #include "std.h"
+#include "../lib/lpc/fiber.h"
 #include "lpc/gc.h"
 #include "lpc/types.h"
 #include "lpc/array.h"
@@ -255,7 +256,10 @@ static float perc_hb_probes = 100.0;	/* decaying avge of how many complete */
  * Also process invocation of LPC reset() and LPC call_out().
  */
 void call_heart_beat () {
-  gc_incremental_mark(GC_MARK_STEPS);
+  gc_tick();
+
+  /* Run fiber scheduler: resume up to 10 fibers per tick */
+  fiber_scheduler_tick(10);
 
   object_t *ob;
   heart_beat_flag = false;
