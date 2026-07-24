@@ -34,6 +34,7 @@ struct mapping_s {
     unsigned short table_size;  /* bit-mask for # of buckets in hash table == power of 2 minus one */
     unsigned short unfilled;    /* threshold to call growMap(), # of buckets among 80% of total buckets that do not have entries */
     int count;                  /* total # of nodes actually in mapping  */
+    uint8_t gc_color;             /* 0=white, 1=gray, 2=black (Phase 1a: reserved) */
 };
 
 #define mapping_too_large()     error("Mapping too large.\n");

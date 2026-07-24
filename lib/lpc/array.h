@@ -12,6 +12,7 @@ struct array_s {
     int extra_ref;
 #endif
     unsigned short size;
+    uint8_t gc_color;      /* 0=white, 1=gray, 2=black (Phase 1a: reserved) */
     svalue_t item[1];
 };
 

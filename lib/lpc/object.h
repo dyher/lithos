@@ -53,6 +53,7 @@ extern int tot_alloc_sentence;
 struct object_s {
     unsigned short ref;		/* Reference count. */
     unsigned short flags;	/* Bits or'ed together from above */
+    uint8_t gc_color;             /* 0=white, 1=gray, 2=black (Phase 1a: reserved) */
     char *name;
     struct object_s *next_hash;
     time_t load_time;		/* time when this object was created */
