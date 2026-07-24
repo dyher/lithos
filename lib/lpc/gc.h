@@ -72,4 +72,58 @@ extern int gc_total_cycles;
 } // extern "C"
 #endif
 
+/* GC cycle state machine */
+typedef enum {
+    GC_PHASE_IDLE = 0,     /* No GC in progress */
+    GC_PHASE_MARKING = 1,  /* Incremental mark in progress */
+    GC_PHASE_SWEEPING = 2  /* Lazy sweep in progress */
+} gc_phase_t;
+
+extern gc_phase_t gc_current_phase;
+
+/* Call at start of a new GC cycle (from heartbeat when idle) */
+void gc_begin_cycle(void);
+void gc_tick(void);
+
+/* Lazy sweep: reclaim white objects during alloc. Returns bytes freed. */
+size_t gc_lazy_sweep(int steps);
+
+/* Check if GC is active (for write barrier fast-path) */
+static inline int gc_is_active(void) {
+    return gc_current_phase != GC_PHASE_IDLE;
+}
+
+/* === Generational Nursery === */
+#define GC_NURSERY_SIZE (4 * 1024 * 1024)  /* 4MB young gen */
+#define GC_MINOR_GC_INTERVAL 5             /* minor GC every N ticks */
+
+typedef struct {
+    uint8_t *base;          /* nursery memory base */
+    uint8_t *top;           /* next allocation point (bump ptr) */
+    uint8_t *limit;         /* end of nursery */
+    int minor_gc_count;     /* tick counter for minor GC trigger */
+    size_t total_allocated; /* lifetime bytes allocated in nursery */
+    size_t total_promoted;  /* lifetime bytes promoted to old gen */
+} gc_nursery_t;
+
+extern gc_nursery_t gc_nursery;
+
+/* Initialize nursery (call once at startup) */
+void gc_nursery_init(void);
+
+/* Allocate from nursery. Returns NULL if nursery full (caller falls back to malloc). */
+void *gc_nursery_alloc(size_t size);
+
+/* Check if pointer is inside nursery */
+static inline int gc_in_nursery(const void *p) {
+    const uint8_t *ptr = (const uint8_t *)p;
+    return ptr >= gc_nursery.base && ptr < gc_nursery.top;
+}
+
+/* Run minor GC: scan nursery, promote survivors, reset nursery */
+void gc_minor_collect(void);
+
+/* Called from gc_tick to check minor GC schedule */
+void gc_nursery_tick(void);
+
 #endif /* LITHOS_GC_H */

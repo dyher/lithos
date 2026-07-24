@@ -4,6 +4,7 @@
 
 #include "src/std.h"
 #include "lpc/gc.h"
+#include "lpc/gc.h"
 #include "rc/rc.h"
 #include "src/interpret.h"
 #include "src/comm.h"
@@ -66,6 +67,11 @@ array_t* allocate_array (size_t n) {
   p = ALLOC_ARRAY (n);
   p->ref = 1;
   p->gc_color = GC_WHITE;
+  /* Try nursery allocation for small arrays */
+  if (n <= 64) {
+    void *np = gc_nursery_alloc(sizeof(array_t) + sizeof(svalue_t) * n);
+    if (np) { memcpy(np, p, sizeof(array_t) + sizeof(svalue_t) * n); FREE((char*)p); p = (array_t*)np; }
+  }
   p->size = (unsigned short)n;
   while (n--)
     p->item[n] = const0;
