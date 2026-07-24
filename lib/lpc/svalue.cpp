@@ -138,7 +138,30 @@ void assign_svalue (svalue_t * dest, svalue_t * v) {
  * (as all identifiers are kept in a array pointed to by the object).
  */
 void assign_svalue_no_free (svalue_t * to, const svalue_t * from) {
-  gc_write_barrier(to, (void*)from);
+  /* Yuasa snapshot-at-beginning write barrier.
+   * If incremental marking is active (gray list non-empty) and the source
+   * svalue holds a white GC-managed reference, push it to gray list. */
+  {
+    extern int gc_gray_list_size;
+    if (gc_gray_list_size > 0 && from) {
+      switch (from->type) {
+        case T_ARRAY:
+          if (from->u.arr && from->u.arr->gc_color == GC_WHITE)
+            gc_gray_push(from->u.arr, GC_OBJ_ARRAY);
+          break;
+        case T_MAPPING:
+          if (from->u.map && from->u.map->gc_color == GC_WHITE)
+            gc_gray_push(from->u.map, GC_OBJ_MAPPING);
+          break;
+        case T_OBJECT:
+          if (from->u.ob && !(from->u.ob->flags & O_DESTRUCTED)
+              && from->u.ob->gc_color == GC_WHITE)
+            gc_gray_push(from->u.ob, GC_OBJ_OBJECT);
+          break;
+        default: break;
+      }
+    }
+  }
   DEBUG_CHECK (from == 0, "Attempt to assign_svalue() from a null ptr.\n");
   DEBUG_CHECK (to == 0, "Attempt to assign_svalue() to a null ptr.\n");
   *to = *from;

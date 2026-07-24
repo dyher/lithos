@@ -33,14 +33,18 @@ typedef struct gc_gray_node {
 #define GC_OBJ_MAPPING  2
 #define GC_OBJ_OBJECT   3
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Phase 1a: Write barrier stub (no-op).
  * Phase 1b will activate this.
  */
 static inline void gc_write_barrier(void *src, void *dst) {
-    (void)src;
-    (void)dst;
-    /* TODO Phase 1b: activate tri-color barrier */
+    (void)src; (void)dst;
+    /* No-op: precise Yuasa barrier is in svalue.cpp assign_svalue_no_free.
+     * This stub exists for API compatibility with other call sites. */
 }
 
 /* Gray list operations */
@@ -62,6 +66,10 @@ void gc_mark_roots(void);
 #ifdef GC_STATS
 extern int gc_total_marked;
 extern int gc_total_cycles;
+#endif
+
+#ifdef __cplusplus
+} // extern "C"
 #endif
 
 #endif /* LITHOS_GC_H */

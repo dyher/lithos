@@ -12,7 +12,7 @@
 #include <string.h>
 
 static gc_gray_node_t *gray_list_head=NULL;
-static int gray_list_size=0;
+int gc_gray_list_size=0;
 #define GC_NODE_POOL_SIZE 1024
 static gc_gray_node_t node_pool[GC_NODE_POOL_SIZE];
 static int node_pool_next=0;
@@ -20,7 +20,7 @@ static int node_pool_next=0;
 int gc_total_marked=0;
 int gc_total_cycles=0;
 #endif
-void gc_gray_list_init(void){gray_list_head=NULL;gray_list_size=0;node_pool_next=0;}
+void gc_gray_list_init(void){gray_list_head=NULL;gc_gray_list_size=0;node_pool_next=0;}
 static gc_gray_node_t*gc_alloc_node(void){
 if(node_pool_next<GC_NODE_POOL_SIZE)return&node_pool[node_pool_next++];
 return(gc_gray_node_t*)malloc(sizeof(gc_gray_node_t));}
@@ -32,11 +32,11 @@ case 3:cp=&((struct object_s*)obj)->gc_color;break;default:return;}
 if(*cp!=0)return;*cp=1;
 gc_gray_node_t*n=gc_alloc_node();
 n->obj=obj;n->obj_type=t;n->next=gray_list_head;
-gray_list_head=n;gray_list_size++;}
+gray_list_head=n;gc_gray_list_size++;}
 gc_gray_node_t*gc_gray_pop(void){
 if(!gray_list_head)return NULL;
 gc_gray_node_t*n=gray_list_head;
-gray_list_head=n->next;gray_list_size--;return n;}
+gray_list_head=n->next;gc_gray_list_size--;return n;}
 int gc_gray_list_empty(void){return gray_list_head==NULL;}
 static void mark_sv(svalue_t*sv){if(!sv)return;
 switch(sv->type){
