@@ -1,16 +1,17 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
-
 #include "src/std.h"
 #include "gc.h"
 #include "lpc/array.h"
 #include "lpc/mapping.h"
 #include "lpc/object.h"
 #include "lpc/program.h"
+#include "src/interpret.h"
+#include "src/simulate.h"
+#include "src/simul_efun.h"
 #include <stdlib.h>
 #include <string.h>
-
 static gc_gray_node_t *gray_list_head=NULL;
 int gc_gray_list_size=0;
 #define GC_NODE_POOL_SIZE 1024
@@ -63,8 +64,7 @@ uint8_t*cp=NULL;switch(n->obj_type){
 case 1:cp=&((struct array_s*)n->obj)->gc_color;break;
 case 2:cp=&((struct mapping_s*)n->obj)->gc_color;break;
 case 3:cp=&((struct object_s*)n->obj)->gc_color;break;}
-if(cp) *cp=2;
-taken++;
+if(cp)*cp=2;taken++;
 #ifdef GC_STATS
 gc_total_marked++;
 #endif
@@ -73,4 +73,20 @@ void gc_mark_roots(void){
 #ifdef GC_STATS
 gc_total_cycles++;
 #endif
+{object_t*ob=obj_list;
+while(ob){if(!(ob->flags&O_DESTRUCTED))gc_gray_push(ob,3);
+ob=ob->next_all;}}
+{extern object_t*simul_efun_ob;
+if(simul_efun_ob&&!(simul_efun_ob->flags&O_DESTRUCTED))
+gc_gray_push(simul_efun_ob,3);}
+{extern control_stack_t*control_stack;
+extern control_stack_t*csp;
+if(control_stack&&csp){control_stack_t*fr=control_stack;
+while(fr<=csp){
+if(fr->ob&&!(fr->ob->flags&O_DESTRUCTED))gc_gray_push(fr->ob,3);
+if(fr->prev_ob&&!(fr->prev_ob->flags&O_DESTRUCTED))gc_gray_push(fr->prev_ob,3);
+fr++;}}}
+{extern svalue_t*sp;extern svalue_t*fp;
+if(sp&&fp&&sp>=fp){svalue_t*sv=fp;
+while(sv<=sp){mark_sv(sv);sv++;}}}
 }
