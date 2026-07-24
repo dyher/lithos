@@ -3,6 +3,7 @@
 #endif /* HAVE_CONFIG_H */
 
 #include "src/std.h"
+#include "lpc/gc.h"
 #include "array.h"
 #include "mapping.h"
 #include "object.h"
@@ -225,6 +226,7 @@ mapping_t *allocate_mapping (size_t n) {
   memset (a, 0, n);
   total_mapping_size += (int)(sizeof (mapping_t) + n);
   newmap->ref = 1;
+  newmap->gc_color = GC_WHITE;
   newmap->count = 0;
   num_mappings++;
   return newmap;

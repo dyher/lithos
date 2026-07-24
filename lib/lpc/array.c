@@ -3,6 +3,7 @@
 #endif /* HAVE_CONFIG_H */
 
 #include "src/std.h"
+#include "lpc/gc.h"
 #include "rc/rc.h"
 #include "src/interpret.h"
 #include "src/comm.h"
@@ -64,6 +65,7 @@ array_t* allocate_array (size_t n) {
 #endif
   p = ALLOC_ARRAY (n);
   p->ref = 1;
+  p->gc_color = GC_WHITE;
   p->size = (unsigned short)n;
   while (n--)
     p->item[n] = const0;

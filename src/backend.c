@@ -5,6 +5,7 @@
 /* 92/04/18 - cleaned up stylistically by Sulam@TMI */
 
 #include "std.h"
+#include "lpc/gc.h"
 #include "lpc/types.h"
 #include "lpc/array.h"
 #include "lpc/object.h"
@@ -254,6 +255,7 @@ static float perc_hb_probes = 100.0;	/* decaying avge of how many complete */
  * Also process invocation of LPC reset() and LPC call_out().
  */
 void call_heart_beat () {
+  gc_incremental_mark(GC_MARK_STEPS);
 
   object_t *ob;
   heart_beat_flag = false;

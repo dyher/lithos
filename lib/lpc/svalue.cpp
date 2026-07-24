@@ -7,6 +7,7 @@
 #include <type_traits>
 
 #include "src/std.h"
+#include "lpc/gc.h"
 #include "src/simul_efun.h"
 #include "array.h"
 #include "buffer.h"
@@ -137,6 +138,7 @@ void assign_svalue (svalue_t * dest, svalue_t * v) {
  * (as all identifiers are kept in a array pointed to by the object).
  */
 void assign_svalue_no_free (svalue_t * to, const svalue_t * from) {
+  gc_write_barrier(to, (void*)from);
   DEBUG_CHECK (from == 0, "Attempt to assign_svalue() from a null ptr.\n");
   DEBUG_CHECK (to == 0, "Attempt to assign_svalue() to a null ptr.\n");
   *to = *from;
