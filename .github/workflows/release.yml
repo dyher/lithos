@@ -4,159 +4,123 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  # === Native builds (run on matching hardware) ===
-  linux-x86_64:
+  # ---------- Linux: 4 platforms, all on fast x86 runner ----------
+  linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            arch: x86_64
+            cross: ""
+          - name: linux-aarch64
+            arch: aarch64
+            cross: aarch64-linux-gnu
+          - name: linux-riscv64
+            arch: riscv64
+            cross: riscv64-linux-gnu
+          - name: linux-armhf
+            arch: arm
+            cross: arm-linux-gnueabihf
     runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Build
+      - name: Install cross toolchain
+        if: matrix.cross != ''
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
-          cmake --build build -j$(nproc)
-          strip build/src/neolith
+          sudo apt-get update
+          sudo apt-get install -y ${{ matrix.cross }}-gcc ${{ matrix.cross }}-g++
+      - name: Configure
+        run: |
+          if [ -n "${{ matrix.cross }}" ]; then
+            cmake -B build -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_C_COMPILER=${{ matrix.cross }}-gcc \
+              -DCMAKE_CXX_COMPILER=${{ matrix.cross }}-g++ \
+              -DCMAKE_SYSTEM_NAME=Linux \
+              -DCMAKE_SYSTEM_PROCESSOR=${{ matrix.arch }}
+          else
+            cmake -B build -DCMAKE_BUILD_TYPE=Release
+          fi
+      - name: Build
+        run: cmake --build build -j$(nproc)
+      - name: Package
+        run: |
+          mkdir -p out
+          cp build/src/neolith out/neolith-${{ matrix.name }}
+          chmod +x out/neolith-${{ matrix.name }}
       - uses: actions/upload-artifact@v4
         with:
-          name: neolith-linux-x86_64
-          path: build/src/neolith
+          name: neolith-${{ matrix.name }}
+          path: out/neolith-${{ matrix.name }}
 
-  linux-aarch64:
-    runs-on: ubuntu-22.04-arm
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
-          cmake --build build -j$(nproc)
-          strip build/src/neolith
-      - uses: actions/upload-artifact@v4
-        with:
-          name: neolith-linux-aarch64
-          path: build/src/neolith
-
-  windows-x86_64:
+  # ---------- Windows x86_64 ----------
+  windows:
     runs-on: windows-2022
+    timeout-minutes: 25
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Build
         shell: cmd
         run: |
-          cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release -j%NUMBER_OF_PROCESSORS%
+          cmake -B build -G "Visual Studio 17 2022" -A x64
+          cmake --build build --config Release --parallel
+      - name: Package
+        shell: cmd
+        run: |
+          mkdir out
+          for /r build %%f in (neolith.exe) do copy /y "%%f" out\neolith-windows-x86_64.exe
       - uses: actions/upload-artifact@v4
         with:
           name: neolith-windows-x86_64
-          path: build/src/Release/neolith.exe
+          path: out/neolith-windows-x86_64.exe
 
-  windows-arm64:
-    runs-on: windows-2022
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build
-        shell: cmd
-        run: |
-          cmake -B build -G "Visual Studio 17 2022" -A ARM64 -DCMAKE_BUILD_TYPE=Release
-          cmake --build build --config Release -j%NUMBER_OF_PROCESSORS%
-      - uses: actions/upload-artifact@v4
-        with:
-          name: neolith-windows-arm64
-          path: build/src/Release/neolith.exe
-
-  macos-aarch64:
-    runs-on: macos-14
+  # ---------- macOS Apple Silicon ----------
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 25
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Build
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=Release
           cmake --build build -j$(sysctl -n hw.ncpu)
-          strip build/src/neolith
+      - name: Package
+        run: |
+          mkdir -p out
+          cp build/src/neolith out/neolith-macos-aarch64
+          chmod +x out/neolith-macos-aarch64
       - uses: actions/upload-artifact@v4
         with:
           name: neolith-macos-aarch64
-          path: build/src/neolith
+          path: out/neolith-macos-aarch64
 
-  macos-x86_64:
-    runs-on: macos-13
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
-          cmake --build build -j$(sysctl -n hw.ncpu)
-          strip build/src/neolith
-      - uses: actions/upload-artifact@v4
-        with:
-          name: neolith-macos-x86_64
-          path: build/src/neolith
-
-  # === Cross-compiled builds ===
-  linux-riscv64:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install cross-compiler
-        run: sudo apt-get update && sudo apt-get install -y gcc-riscv64-linux-gnu g++-riscv64-linux-gnu
-      - name: Cross-build
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=riscv64-linux-gnu-gcc \
-            -DCMAKE_CXX_COMPILER=riscv64-linux-gnu-g++ \
-            -DCMAKE_SYSTEM_NAME=Linux \
-            -DCMAKE_SYSTEM_PROCESSOR=riscv64
-          cmake --build build -j$(nproc)
-      - uses: actions/upload-artifact@v4
-        with:
-          name: neolith-linux-riscv64
-          path: build/src/neolith
-
-  linux-armhf:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install cross-compiler
-        run: sudo apt-get update && sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
-      - name: Cross-build
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_C_COMPILER=arm-linux-gnueabihf-gcc \
-            -DCMAKE_CXX_COMPILER=arm-linux-gnueabihf-g++ \
-            -DCMAKE_SYSTEM_NAME=Linux \
-            -DCMAKE_SYSTEM_PROCESSOR=arm
-          cmake --build build -j$(nproc)
-      - uses: actions/upload-artifact@v4
-        with:
-          name: neolith-linux-armhf
-          path: build/src/neolith
-
-  # === Create GitHub Release ===
+  # ---------- Create GitHub Release (tolerant of partial failures) ----------
   release:
-    needs: [linux-x86_64, linux-aarch64, windows-x86_64, windows-arm64,
-            macos-aarch64, macos-x86_64, linux-riscv64, linux-armhf]
+    needs: [linux, windows, macos]
+    if: always()
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/download-artifact@v4
         with:
-          path: artifacts
-
-      - name: Package binaries
+          pattern: neolith-*
+          merge-multiple: true
+          path: bins
+      - name: List binaries
         run: |
-          cd artifacts
-          for dir in */; do
-            name="${dir%/}"
-            chmod +x "$dir/neolith" 2>/dev/null || true
-            tar czf "../${name}.tar.gz" -C "$dir" .
-          done
-          ls -la ../*.tar.gz
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+          ls -la bins/
+          chmod +x bins/* 2>/dev/null || true
+      - uses: softprops/action-gh-release@v2
         with:
-          files: "*.tar.gz"
+          tag_name: ${{ github.ref_name }}
+          files: bins/*
           generate_release_notes: true
           draft: false
