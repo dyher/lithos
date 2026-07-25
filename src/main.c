@@ -23,6 +23,7 @@
 #define SUPPRESS_COMPILER_INLINES
 #include "std.h"
 #include "jit.h"
+#include "jit_templates.h"
 #include "rc/rc.h"
 #include "comm.h"
 #include "simul_efun.h"
@@ -122,6 +123,7 @@ int main (int argc, char **argv) {
 
   /* Initialize JIT compiler */
   jit_init();
+  jit_init_templates();
 
   /* Initialize the LPC compiler. */
   init_lpc_compiler (

@@ -52,6 +52,7 @@ target_include_directories(stem PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}) # for unit-t
 # build neolith executable
 add_executable(neolith main.c
     jit.c
+    jit_templates.c
     ${CMAKE_SOURCE_DIR}/tests/test_fiber_stress.c ${neolith_SOURCES})
 # Create interface target for FFI so all stem consumers get it
 add_library(ffi_interface INTERFACE)
