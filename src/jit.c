@@ -3,6 +3,7 @@
 #endif
 #include "jit.h"
 #include "jit_trace.h"
+#include "cmod.h"
 #include <string.h>
 #include <stdio.h>
 

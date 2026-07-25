@@ -54,6 +54,7 @@ add_executable(neolith main.c
     jit.c
     jit_templates.c
     jit_trace.c
+    cmod.c
 
     ${CMAKE_SOURCE_DIR}/tests/test_fiber_stress.c ${neolith_SOURCES})
 # Create interface target for FFI so all stem consumers get it
@@ -79,4 +80,9 @@ if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL 
     target_sources(neolith PRIVATE jit_trace_compile_aarch64.c)
 elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
     target_sources(neolith PRIVATE jit_trace_compile_x86_64.c)
+endif()
+
+# Link dl library for CMOD dlopen support
+if(NOT WIN32)
+    target_link_libraries(neolith PRIVATE ${CMAKE_DL_LIBS})
 endif()
