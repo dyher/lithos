@@ -22,6 +22,7 @@
 
 #define SUPPRESS_COMPILER_INLINES
 #include "std.h"
+#include "jit.h"
 #include "rc/rc.h"
 #include "comm.h"
 #include "simul_efun.h"
@@ -118,6 +119,9 @@ int main (int argc, char **argv) {
     CONFIG_INT (__SHARED_STRING_HASH_TABLE_SIZE__),
     CONFIG_INT (__MAX_STRING_LENGTH__)
   );  /* stralloc.c */
+
+  /* Initialize JIT compiler */
+  jit_init();
 
   /* Initialize the LPC compiler. */
   init_lpc_compiler (
