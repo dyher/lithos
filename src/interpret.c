@@ -767,6 +767,19 @@ void eval_instruction (const char *p) {
   while (1)
     {
       instruction = EXTRACT_UCHAR (pc++);
+
+      /* JIT: try native template for this opcode */
+      if (jit_enabled()) {
+          jit_template_t *tmpl = jit_get_template((uint8_t)instruction);
+          if (tmpl && tmpl->code_size > sizeof(void *)) {
+              /* Native code template - execute via union cast (POSIX-safe) */
+              union { void *obj; void (*fn)(void); } cast;
+              cast.obj = (void *)tmpl->code;
+              cast.fn();
+              continue;  /* skip switch, go to next instruction */
+          }
+      }
+
       if (!--eval_cost)
         {
           /* [NEOLITH-EXTENSION] allows eval_instruction without current_object */
