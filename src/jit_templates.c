@@ -136,6 +136,14 @@ void jit_init_templates(void) {
         registered++;
     }
 
+    /* F_ADD integer fast path - registered with special opcode marker */
+    void *add_int_code = jit_emit_add_int_fast();
+    if (add_int_code) {
+        /* Use opcode 255 as internal marker for ADD_INT_FAST */
+        jit_register_template(255, (uint8_t *)add_int_code, 48, -1, 0);
+        registered++;
+    }
+
     /* Remaining opcodes still use function pointer templates */
     for (size_t i = 0; i < NUM_TEMPLATE_DEFS; i++) {
         template_def_t *td = &template_defs[i];
@@ -151,5 +159,5 @@ void jit_init_templates(void) {
         registered++;
     }
 
-    printf("JIT: registered %d opcode templates (native: CONST0, CONST1, RETURN_ZERO, LOCAL)\n", registered);
+    printf("JIT: registered %d opcode templates (native: CONST0, CONST1, RETURN_ZERO, LOCAL, ADD_INT_FAST)\n", registered);
 }

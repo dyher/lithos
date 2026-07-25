@@ -12,6 +12,7 @@ void *jit_emit_const1(void);
 
 void *jit_emit_return_zero(void);
 void *jit_emit_local(void);
+void *jit_emit_add_int_fast(void);
 
 /* Initialize platform-specific emitter. */
 void jit_emit_init(void);

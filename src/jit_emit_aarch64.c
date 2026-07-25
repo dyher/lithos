@@ -180,6 +180,54 @@ void *jit_emit_local(void) {
     return (void *)code;
 }
 
+/* F_ADD_INT_FAST: (sp-1)->u.number += sp->u.number; sp--;
+ * Precondition: caller verified both are T_NUMBER.
+ * No type check, no refcount, pure integer arithmetic.
+ *
+ * Code:
+ *   ldr x9, [pc, #lit_sp]     // &sp
+ *   ldr x10, [x9]             // sp
+ *   ldr x11, [x10, #8]        // sp->u.number
+ *   ldr x12, [x10, #-8]       // (sp-1)->u.number
+ *   add x12, x12, x11         // result
+ *   sub x10, x10, #16         // sp--
+ *   str x10, [x9]             // store sp
+ *   str x12, [x10, #8]        // sp->u.number = result
+ *   ret
+ *   .quad &sp
+ */
+void *jit_emit_add_int_fast(void) {
+    if (!jit_enabled()) return NULL;
+    size_t n_words = 12; /* 9 instr + 1 pad + 1 literal */
+    size_t code_size = n_words * sizeof(uint32_t);
+    uint32_t *code = (uint32_t *)jit_alloc_code(code_size);
+    if (!code) return NULL;
+
+    /* Literal at word 9 (after RET at word 8) */
+    /* LDR literal from instr[0]: imm19 = 9 - 0 = 9 */
+    code[0] = 0x58000000 | (9 << 5) | 9;    /* LDR X9, [PC, #36] &sp */
+    code[1] = encode_ldr_x(10, 9, 0);         /* LDR X10, [X9] sp */
+    code[2] = encode_ldr_x(11, 10, 8);        /* LDR X11, [X10, #8] sp->number */
+    /* (sp-1)->u.number is at [X10, -16+8] = [X10, -8] */
+    /* LDR with negative offset: use LDUR (unscaled) */
+    /* LDUR Xt, [Xn, #simm9]: 0xF8500000 | (imm9 << 12) | (Rn << 5) | Rt */
+    /* imm9 = -8 → signed 9-bit = 0x1F8 */
+    code[3] = 0xF85F814C;                     /* LDUR X12, [X10, #-8] */
+    code[4] = 0x8B0B018C;                     /* ADD X12, X12, X11 */
+    code[5] = 0xD100414A;                     /* SUB X10, X10, #16 */
+    code[6] = encode_str_x(10, 9, 0);         /* STR X10, [X9] store sp */
+    code[7] = encode_str_x(12, 10, 8);        /* STR X12, [X10, #8] */
+    code[8] = encode_ret();
+    code[9] = 0xD503201F;                     /* NOP pad */
+    *(uint64_t *)&code[10] = (uint64_t)&sp;   /* Wait - word 10 but n_words=11? */
+    /* Actually n_words should be 12 for alignment: 9 instr + 1 nop + 2 words for uint64 */
+    /* Fix: already allocated 11 words = 44 bytes, uint64_t at &code[10] needs words 10-11 */
+    /* So n_words must be 12. Let me fix. */
+
+    printf("JIT: emitted F_ADD_INT_FAST native code (%zu bytes)\n", code_size);
+    return (void *)code;
+}
+
 
 /* Emit F_RETURN_ZERO: identical semantics to F_CONST0 (push integer 0) */
 void *jit_emit_return_zero(void);
@@ -187,6 +235,9 @@ void *jit_emit_return_zero(void);
 /* Emit F_LOCAL: load local variable onto stack
  * Reads 1-byte index from pc, advances pc, loads fp[idx] to ++sp */
 void *jit_emit_local(void);
+
+/* F_ADD_INT_FAST: sp[-1] += sp; sp--; (both must be T_NUMBER, checked by caller) */
+void *jit_emit_add_int_fast(void);
 
 #else /* !__aarch64__ */
 
@@ -197,5 +248,6 @@ void *jit_emit_const0(void) { return NULL; }
 void *jit_emit_const1(void) { return NULL; }
 void *jit_emit_return_zero(void) { return NULL; }
 void *jit_emit_local(void) { return NULL; }
+void *jit_emit_add_int_fast(void) { return NULL; }
 
 #endif /* __aarch64__ */

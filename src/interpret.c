@@ -774,7 +774,21 @@ void eval_instruction (const char *p) {
           jit_template_t *tmpl = jit_get_template((uint8_t)instruction);
           if (tmpl && tmpl->code_size > sizeof(void *)) {
               /* Safety: only allow verified opcodes through JIT */
-              if (instruction != 15 && instruction != 16 && instruction != 47 && instruction != 61) goto jit_skip;
+              if (instruction == 15 || instruction == 16 || instruction == 47 || instruction == 61) {
+                  /* Direct dispatch for simple opcodes */
+              } else if (instruction == F_ADD && sp >= fp + 1 &&
+                         sp->type == T_NUMBER && (sp-1)->type == T_NUMBER) {
+                  /* F_ADD integer fast path: inline type guard passed */
+                  jit_template_t *add_tmpl = jit_get_template(255);
+                  if (add_tmpl && add_tmpl->code_size > sizeof(void *)) {
+                      union { void *obj; void (*fn)(void); } cast;
+                      cast.obj = (void *)add_tmpl->code;
+                      cast.fn();
+                      continue;
+                  }
+              } else {
+                  goto jit_skip;
+              }
               /* Native code template - execute via union cast (POSIX-safe) */
               union { void *obj; void (*fn)(void); } cast;
               cast.obj = (void *)tmpl->code;
