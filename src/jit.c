@@ -2,6 +2,7 @@
 #include <config.h>
 #endif
 #include "jit.h"
+#include "jit_trace.h"
 #include <string.h>
 #include <stdio.h>
 
