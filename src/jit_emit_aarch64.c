@@ -228,6 +228,145 @@ void *jit_emit_add_int_fast(void) {
     return (void *)code;
 }
 
+/* F_BRANCH: pc += *(int16_t*)pc;
+ * Reads 2-byte signed offset from pc, advances pc by that offset.
+ * Note: this replaces the interpreter's COPY_SHORT + pc += offset.
+ * The native code must read the offset from the CURRENT pc position
+ * (which points to the 2-byte offset after the F_BRANCH opcode byte).
+ *
+ * Code:
+ *   ldr x9, [pc, #lit_pc]      // &pc
+ *   ldr x10, [x9]              // pc value (points to offset bytes)
+ *   ldrsh w11, [x10]           // sign-extend 16-bit offset
+ *   add x10, x10, x11          // pc += offset (but need to also skip the 2 offset bytes!)
+ *   Wait - interpreter does: COPY_SHORT(&offset, pc); pc += offset;
+ *   After COPY_SHORT, pc has already moved past the 2 bytes? No!
+ *   Actually in interpreter: pc points to offset bytes when F_BRANCH fires.
+ *   COPY_SHORT reads 2 bytes at pc, then pc += offset.
+ *   But pc is NOT advanced past the offset bytes first!
+ *   So: new_pc = pc + offset (where pc still points to offset bytes)
+ *   Hmm, that means offset is relative to the offset field itself.
+ *   Let me re-check...
+ *
+ *   Actually looking at interpreter more carefully:
+ *     case F_BRANCH:
+ *       COPY_SHORT(&offset, pc);  // reads 2 bytes at current pc
+ *       pc += offset;             // adds offset to pc (which still points to offset bytes)
+ *   So new_pc = old_pc + offset, where old_pc points to the 2-byte offset.
+ *   This means offset=0 would loop forever (stay at offset bytes).
+ *   In practice, compiler generates offset relative to AFTER the offset field.
+ *   Let me check if there's a pc += 2 somewhere... No, there isn't.
+ *   So the LPC compiler must account for this: offset includes the 2-byte skip.
+ *
+ *   For JIT: we just replicate exactly what interpreter does.
+ *   pc currently points to the 2-byte offset (after opcode fetch did pc++).
+ *   Read signed short, add to pc. Done.
+ */
+void *jit_emit_branch(void) {
+    if (!jit_enabled()) return NULL;
+    extern const char *pc;
+    size_t n_words = 10; /* 7 instr + 1 pad + 2 literal words */
+    size_t code_size = n_words * sizeof(uint32_t);
+    uint32_t *code = (uint32_t *)jit_alloc_code(code_size);
+    if (!code) return NULL;
+
+    /* Literal &pc at word 8 */
+    code[0] = 0x58000000 | (8 << 5) | 9;    /* LDR X9, [PC, #32] &pc */
+    code[1] = encode_ldr_x(10, 9, 0);         /* LDR X10, [X9] pc */
+    /* LDRSH W11, [X10]: sign-extend halfword load */
+    /* LDRSH Xt, [Xn]: 0x79800000 | (Rn << 5) | Rt (unsigned offset 0) */
+    /* Actually LDRSH (signed halfword) unscaled: LDURSH */
+    /* LDURSH Xt, [Xn, #0]: 0x79C00000 | (Rn << 5) | Rt */
+    /* Or scaled: LDRSH Wt, [Xn, #0]: 0x79800000 | (0 << 10) | (Rn << 5) | Rt */
+    code[2] = 0x7980014B;                     /* LDRSH W11, [X10, #0] */
+    /* Sign-extend W11 to X11 for addition */
+    code[3] = 0x93407D6B;                     /* SXTW X11, W11 */
+    code[4] = 0x8B0B014A;                     /* ADD X10, X10, X11 */
+    code[5] = encode_str_x(10, 9, 0);         /* STR X10, [X9] store pc */
+    code[6] = encode_ret();
+    code[7] = 0xD503201F;                     /* NOP pad */
+    *(uint64_t *)&code[8] = (uint64_t)&pc;
+
+    printf("JIT: emitted F_BRANCH native code (%zu bytes)\n", code_size);
+    return (void *)code;
+}
+
+/* F_BRANCH_WHEN_ZERO fast path:
+ * Precondition: sp->type == T_NUMBER (checked by caller).
+ * If sp->u.number == 0: sp--, pc += *(int16_t*)pc
+ * Else: sp--, pc += 2 (skip offset bytes)
+ *
+ * Code:
+ *   ldr x9, [pc, #lit_sp]
+ *   ldr x10, [pc, #lit_pc]
+ *   ldr x11, [x9]              // sp
+ *   ldr x12, [x11, #8]         // sp->u.number
+ *   cbnz x12, nonzero          // if number != 0, goto nonzero
+ *   // Zero path: pc += *(short*)pc
+ *   ldr x13, [x10]             // pc
+ *   ldrsh w14, [x13]
+ *   sxtw x14, w14
+ *   add x13, x13, x14
+ *   str x13, [x10]             // store pc
+ *   b done
+ * nonzero:
+ *   // Non-zero path: pc += 2
+ *   ldr x13, [x10]
+ *   add x13, x13, #2
+ *   str x13, [x10]
+ * done:
+ *   sub x11, x11, #16          // sp--
+ *   str x11, [x9]              // store sp
+ *   ret
+ *   .quad &sp
+ *   .quad &pc
+ */
+void *jit_emit_branch_when_zero_fast(void) {
+    if (!jit_enabled()) return NULL;
+    extern const char *pc;
+    size_t n_words = 22; /* instructions + 2 literals */
+    size_t code_size = n_words * sizeof(uint32_t);
+    uint32_t *code = (uint32_t *)jit_alloc_code(code_size);
+    if (!code) return NULL;
+
+    /* Literals at words 18 (&sp) and 20 (&pc) */
+    /* From instr[0]: lit_sp at word 18, offset = 18*4 = 72, imm19 = 18 */
+    /* From instr[1]: lit_pc at word 20, offset = 19*4 = 76, imm19 = 19 */
+    code[0]  = 0x58000000 | (18 << 5) | 9;   /* LDR X9, [PC,#72] &sp */
+    code[1]  = 0x58000000 | (19 << 5) | 10;  /* LDR X10,[PC,#76] &pc */
+    code[2]  = encode_ldr_x(11, 9, 0);        /* LDR X11, [X9] sp */
+    code[3]  = encode_ldr_x(12, 11, 8);       /* LDR X12, [X11,#8] number */
+    /* CBNZ X12, #offset_to_nonzero */
+    /* nonzero starts at instruction 9, current is 4, offset = (9-4)*4 = 20 bytes */
+    /* CBNZ: 0xB5000000 | (imm19 << 5) | Rt, imm19 = offset/4 = 5 */
+    code[4]  = 0xB5000000 | (5 << 5) | 12;   /* CBNZ X12, #+20 (nonzero) */
+    /* === Zero path === */
+    code[5]  = encode_ldr_x(13, 10, 0);       /* LDR X13, [X10] pc */
+    code[6]  = 0x798001AE;                     /* LDRSH W14, [X13] */
+    code[7]  = 0x93407DCE;                     /* SXTW X14, W14 */
+    code[8]  = 0x8B0E01AD;                     /* ADD X13, X13, X14 */
+    /* Branch to done (instruction 15): offset = (15-9)*4 = 24, imm19 = 6 */
+    code[9]  = 0x14000000 | 6;                 /* B #+24 (done) */
+    /* === Nonzero path (instruction 10) === */
+    code[10] = encode_ldr_x(13, 10, 0);       /* LDR X13, [X10] pc */
+    code[11] = encode_add_x_imm(13, 13, 2);   /* ADD X13, X13, #2 */
+    /* Fall through to done */
+    /* === Done (instruction 12) === */
+    code[12] = encode_str_x(13, 10, 0);       /* STR X13, [X10] store pc */
+    code[13] = 0xD100416B;                     /* SUB X11, X11, #16 (sp--) */
+    code[14] = encode_str_x(11, 9, 0);        /* STR X11, [X9] store sp */
+    code[15] = encode_ret();
+    /* Padding */
+    code[16] = 0xD503201F;                     /* NOP */
+    code[17] = 0xD503201F;                     /* NOP */
+    /* Literals */
+    *(uint64_t *)&code[18] = (uint64_t)&sp;
+    *(uint64_t *)&code[20] = (uint64_t)&pc;
+
+    printf("JIT: emitted F_BRANCH_WHEN_ZERO fast path (%zu bytes)\n", code_size);
+    return (void *)code;
+}
+
 
 /* Emit F_RETURN_ZERO: identical semantics to F_CONST0 (push integer 0) */
 void *jit_emit_return_zero(void);
@@ -239,6 +378,13 @@ void *jit_emit_local(void);
 /* F_ADD_INT_FAST: sp[-1] += sp; sp--; (both must be T_NUMBER, checked by caller) */
 void *jit_emit_add_int_fast(void);
 
+/* F_BRANCH: pc += *(short*)pc; (unconditional relative jump) */
+void *jit_emit_branch(void);
+
+/* F_BRANCH_WHEN_ZERO: if T_NUMBER && val==0 → pc+=offset, else pc+=2
+ * Precondition: caller verified sp->type == T_NUMBER. Pops sp. */
+void *jit_emit_branch_when_zero_fast(void);
+
 #else /* !__aarch64__ */
 
 void jit_emit_init(void) {
@@ -249,5 +395,7 @@ void *jit_emit_const1(void) { return NULL; }
 void *jit_emit_return_zero(void) { return NULL; }
 void *jit_emit_local(void) { return NULL; }
 void *jit_emit_add_int_fast(void) { return NULL; }
+void *jit_emit_branch(void) { return NULL; }
+void *jit_emit_branch_when_zero_fast(void) { return NULL; }
 
 #endif /* __aarch64__ */

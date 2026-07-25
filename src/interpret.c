@@ -774,8 +774,19 @@ void eval_instruction (const char *p) {
           jit_template_t *tmpl = jit_get_template((uint8_t)instruction);
           if (tmpl && tmpl->code_size > sizeof(void *)) {
               /* Safety: only allow verified opcodes through JIT */
-              if (instruction == 15 || instruction == 16 || instruction == 47 || instruction == 61) {
+              if (instruction == 15 || instruction == 16 || instruction == 47 || instruction == 61 || instruction == 21) {
                   /* Direct dispatch for simple opcodes */
+              } else if (instruction == 21) {
+                  /* F_BRANCH: direct native dispatch (no guard needed) */
+              } else if (instruction == 19 && sp->type == T_NUMBER) {
+                  /* F_BRANCH_WHEN_ZERO: type guard passed, use fast path */
+                  jit_template_t *bwz_tmpl = jit_get_template(254);
+                  if (bwz_tmpl && bwz_tmpl->code_size > sizeof(void *)) {
+                      union { void *obj; void (*fn)(void); } cast;
+                      cast.obj = (void *)bwz_tmpl->code;
+                      cast.fn();
+                      continue;
+                  }
               } else if (instruction == F_ADD && sp >= fp + 1 &&
                          sp->type == T_NUMBER && (sp-1)->type == T_NUMBER) {
                   /* F_ADD integer fast path: inline type guard passed */

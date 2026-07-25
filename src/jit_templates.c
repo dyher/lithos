@@ -144,6 +144,20 @@ void jit_init_templates(void) {
         registered++;
     }
 
+    /* F_BRANCH: unconditional relative jump */
+    void *branch_code = jit_emit_branch();
+    if (branch_code) {
+        jit_register_template(21, (uint8_t *)branch_code, 40, 0, 0);
+        registered++;
+    }
+
+    /* F_BRANCH_WHEN_ZERO fast path (internal marker 254) */
+    void *bwz_code = jit_emit_branch_when_zero_fast();
+    if (bwz_code) {
+        jit_register_template(254, (uint8_t *)bwz_code, 88, -1, 0);
+        registered++;
+    }
+
     /* Remaining opcodes still use function pointer templates */
     for (size_t i = 0; i < NUM_TEMPLATE_DEFS; i++) {
         template_def_t *td = &template_defs[i];
@@ -159,5 +173,5 @@ void jit_init_templates(void) {
         registered++;
     }
 
-    printf("JIT: registered %d opcode templates (native: CONST0, CONST1, RETURN_ZERO, LOCAL, ADD_INT_FAST)\n", registered);
+    printf("JIT: registered %d opcode templates (native: CONST0/1, RET0, LOCAL, ADD, BRANCH, BWZ)\n", registered);
 }
