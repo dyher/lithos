@@ -53,7 +53,7 @@ target_include_directories(stem PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}) # for unit-t
 add_executable(neolith main.c
     jit.c
     jit_templates.c
-    jit_emit_aarch64.c
+
     ${CMAKE_SOURCE_DIR}/tests/test_fiber_stress.c ${neolith_SOURCES})
 # Create interface target for FFI so all stem consumers get it
 add_library(ffi_interface INTERFACE)
@@ -61,3 +61,10 @@ target_link_libraries(ffi_interface INTERFACE ${FFI_LIBRARIES})
 target_include_directories(ffi_interface INTERFACE ${FFI_INCLUDE_DIRS})
 
 target_link_libraries(neolith PRIVATE stem ffi_interface lpc fiber_port)
+
+# Platform-specific JIT emitter (only compile for current architecture)
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+    target_sources(neolith PRIVATE jit_emit_aarch64.c)
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
+    target_sources(neolith PRIVATE jit_emit_x86_64.c)
+endif()
