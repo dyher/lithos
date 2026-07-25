@@ -142,4 +142,45 @@ uint32_t jit_record_call(const char *prog_name, int func_index) {
     return 0;
 }
 
+
+/* === Hot Function Detection === */
+
+typedef struct jit_hot_entry_s {
+    const char *prog_name;
+    int         func_addr;
+    uint32_t    call_count;
+} jit_hot_entry_t;
+
+#define JIT_MAX_HOT_ENTRIES 4096
+static jit_hot_entry_t hot_entries[JIT_MAX_HOT_ENTRIES];
+static int num_hot_entries = 0;
+
+static jit_hot_entry_t *find_hot_entry(const char *prog_name, int func_addr) {
+    for (int i = 0; i < num_hot_entries; i++) {
+        if (hot_entries[i].func_addr == func_addr &&
+            strcmp(hot_entries[i].prog_name, prog_name) == 0) {
+            return &hot_entries[i];
+        }
+    }
+    return NULL;
+}
+
+uint32_t jit_record_function_entry(const char *prog_name, int func_addr) {
+    if (!jit_is_enabled) return 0;
+    jit_hot_entry_t *e = find_hot_entry(prog_name, func_addr);
+    if (!e) {
+        if (num_hot_entries >= JIT_MAX_HOT_ENTRIES) return 0;
+        e = &hot_entries[num_hot_entries++];
+        e->prog_name = prog_name;
+        e->func_addr = func_addr;
+        e->call_count = 0;
+    }
+    return ++e->call_count;
+}
+
+int jit_is_hot(const char *prog_name, int func_addr) {
+    jit_hot_entry_t *e = find_hot_entry(prog_name, func_addr);
+    return e && e->call_count >= JIT_HOT_THRESHOLD;
+}
+
 int jit_enabled(void) { return jit_is_enabled; }

@@ -9,6 +9,7 @@
 #include "apply.h"
 #include "frame.h"
 #include "interpret.h"
+#include "jit.h"
 #include "simul_efun.h"
 #include "lpc/object.h"
 #include "lpc/array.h"
@@ -1787,6 +1788,15 @@ void eval_instruction (const char *p) {
             /* Save all important global stack machine registers */
             push_control_stack (FRAME_FUNCTION);
             current_prog = current_object->prog;
+
+            /* JIT hot detection: track function entry */
+            if (jit_enabled()) {
+                uint32_t cnt = jit_record_function_entry(current_prog->name, offset);
+                if (cnt == JIT_HOT_THRESHOLD) {
+                    opt_trace(1, "JIT: function %s@%d became hot (calls=%u)",
+                              current_prog->name, offset, cnt);
+                }
+            }
 
             caller_type = ORIGIN_LOCAL;
             /*

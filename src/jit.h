@@ -68,6 +68,13 @@ jit_function_t *jit_get_function(const char *prog_name, int func_index);
 /* Increment call count; returns new count. */
 uint32_t jit_record_call(const char *prog_name, int func_index);
 
+/* Record a function entry for hot detection.
+ * Returns call count. When count == JIT_HOT_THRESHOLD, function is hot. */
+uint32_t jit_record_function_entry(const char *prog_name, int func_addr);
+
+/* Check if a function is hot (call_count >= threshold). */
+int jit_is_hot(const char *prog_name, int func_addr);
+
 /* Check if JIT is enabled (can be disabled via config). */
 int jit_enabled(void);
 
