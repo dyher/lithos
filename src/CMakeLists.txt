@@ -5,7 +5,8 @@ pkg_check_modules(FFI REQUIRED libffi)
 
 # The "stem" target is the collection of object files (CMake object library)
 # that includes everything we need to build the LPMud driver. It can be linked
-# to an executable entry function (main.c) to build the final neolith server binary.
+# to an executable entry function (main.c
+# to an executable entry function (main.c)
 #
 # Alternatively, the "stem" object files can be linked to other frontends,
 # such as a unit-test executable or a custom command line interface that functions
@@ -49,7 +50,8 @@ target_include_directories(stem PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}) # for unit-t
 
 # ================================================================
 # build neolith executable
-add_executable(neolith main.c ${neolith_SOURCES})
+add_executable(neolith main.c
+    ${CMAKE_SOURCE_DIR}/tests/test_fiber_stress.c ${neolith_SOURCES})
 # Create interface target for FFI so all stem consumers get it
 add_library(ffi_interface INTERFACE)
 target_link_libraries(ffi_interface INTERFACE ${FFI_LIBRARIES})

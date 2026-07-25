@@ -102,9 +102,14 @@ void fiber_resume(lpc_fiber_t *fib) {
     fiber_switch(from_ctx, &fib->ctx);
 
     /* Returned from fiber (it yielded or finished) */
-    if (current_fiber && current_fiber->state == FIBER_STATE_RUNNING) {
-        current_fiber->state = FIBER_STATE_SUSPENDED;
+    if (current_fiber) {
+        if (current_fiber->state == FIBER_STATE_RUNNING) {
+            /* Fiber entry function returned -> mark as DEAD */
+            current_fiber->state = FIBER_STATE_DEAD;
+        }
+        /* If SUSPENDED, fiber called fiber_yield() - leave as is */
     }
+    current_fiber = prev;
 }
 
 void fiber_destroy(lpc_fiber_t *fib) {
@@ -122,6 +127,20 @@ void fiber_destroy(lpc_fiber_t *fib) {
     fiber_stack_free(&fib->ctx);
     free(fib);
     num_fibers--;
+}
+
+
+/* Called by ASM trampoline when fiber entry function returns normally.
+ * Marks fiber as DEAD and switches back to previous context.
+ * This function MUST NOT return. */
+void fiber_on_exit(void) {
+    if (current_fiber) {
+        current_fiber->state = FIBER_STATE_DEAD;
+    }
+    /* Switch back to main or previous fiber - never returns */
+    fiber_switch(&current_fiber->ctx, &main_ctx);
+    /* Should never reach here */
+    __builtin_unreachable();
 }
 
 void fiber_scheduler_tick(int max_fibers) {

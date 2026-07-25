@@ -59,6 +59,8 @@ static RETSIGTYPE sig_bus (int sig);
 
 /* implementations */
 
+extern void run_fiber_stress_test(void);
+
 int main (int argc, char **argv) {
 
   char* locale = setlocale (LC_ALL, PLATFORM_UTF8_LOCALE);
@@ -137,6 +139,12 @@ int main (int argc, char **argv) {
     {
       LOG_FATAL ("{}\t***** error occurs in mudlib startup, shutting down.");
       exit (EXIT_FAILURE);
+    }
+
+  /* Run fiber stress test in console mode (-c flag) */
+  if (MAIN_OPTION(console_mode))
+    {
+      run_fiber_stress_test();
     }
 
   if (g_proceeding_shutdown)
