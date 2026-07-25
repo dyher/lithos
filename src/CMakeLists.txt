@@ -54,6 +54,7 @@ add_executable(neolith main.c
     jit.c
     jit_templates.c
     jit_trace.c
+    jit_trace_compile_aarch64.c
 
     ${CMAKE_SOURCE_DIR}/tests/test_fiber_stress.c ${neolith_SOURCES})
 # Create interface target for FFI so all stem consumers get it

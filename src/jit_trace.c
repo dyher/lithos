@@ -3,6 +3,7 @@
 #include <config.h>
 #endif
 #include "jit_trace.h"
+#include "jit_trace_compile.h"
 #include "jit.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -94,6 +95,9 @@ jit_trace_t *jit_trace_finish(void) {
         return NULL;
     }
     memcpy(t->entries, current_trace, trace_length * sizeof(trace_entry_t));
+
+    /* Attempt compilation */
+    jit_trace_compile(t);
 
     num_traces++;
     printf("JIT: recorded trace #%u (%u opcodes, start_pc=%p)\n",
