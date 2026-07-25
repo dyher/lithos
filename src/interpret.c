@@ -768,10 +768,13 @@ void eval_instruction (const char *p) {
     {
       instruction = EXTRACT_UCHAR (pc++);
 
-      /* JIT: try native template for this opcode */
-      if (jit_enabled()) {
+      /* JIT: try native template for this opcode (only after init) */
+      extern int jit_dispatch_ready;
+      if (jit_dispatch_ready && jit_enabled()) {
           jit_template_t *tmpl = jit_get_template((uint8_t)instruction);
           if (tmpl && tmpl->code_size > sizeof(void *)) {
+              /* Safety: only allow verified opcodes through JIT */
+              if (instruction != 15 && instruction != 16 && instruction != 47 && instruction != 61) goto jit_skip;
               /* Native code template - execute via union cast (POSIX-safe) */
               union { void *obj; void (*fn)(void); } cast;
               cast.obj = (void *)tmpl->code;
@@ -779,6 +782,7 @@ void eval_instruction (const char *p) {
               continue;  /* skip switch, go to next instruction */
           }
       }
+      jit_skip:;
 
       if (!--eval_cost)
         {

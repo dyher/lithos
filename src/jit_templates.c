@@ -124,11 +124,23 @@ void jit_init_templates(void) {
         registered++;
     }
 
+    void *ret0_code = jit_emit_return_zero();
+    if (ret0_code) {
+        jit_register_template(47, (uint8_t *)ret0_code, 36, +1, 0);
+        registered++;
+    }
+
+    void *local_code = jit_emit_local();
+    if (local_code) {
+        jit_register_template(61, (uint8_t *)local_code, 88, +1, 0);
+        registered++;
+    }
+
     /* Remaining opcodes still use function pointer templates */
     for (size_t i = 0; i < NUM_TEMPLATE_DEFS; i++) {
         template_def_t *td = &template_defs[i];
         /* Skip CONST0/CONST1 - already registered with native code */
-        if (td->opcode == 15 || td->opcode == 16) continue;
+        if (td->opcode == 15 || td->opcode == 16 || td->opcode == 47 || td->opcode == 61) continue;
         jit_register_template(
             td->opcode,
             (uint8_t *)(uintptr_t)td->fn,
@@ -139,5 +151,5 @@ void jit_init_templates(void) {
         registered++;
     }
 
-    printf("JIT: registered %d opcode templates (native: CONST0, CONST1)\n", registered);
+    printf("JIT: registered %d opcode templates (native: CONST0, CONST1, RETURN_ZERO, LOCAL)\n", registered);
 }

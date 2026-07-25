@@ -126,6 +126,68 @@ void *jit_emit_const1(void) {
     return (void *)code;
 }
 
+/* F_RETURN_ZERO: push T_NUMBER 0 (same semantics as CONST0) */
+void *jit_emit_return_zero(void) {
+    if (!jit_enabled()) return NULL;
+    size_t code_size = 9 * sizeof(uint32_t);
+    uint32_t *code = (uint32_t *)jit_alloc_code(code_size);
+    if (!code) return NULL;
+    uint32_t ldr_lit = 0x58000000 | (8 << 5) | 9;
+    code[0] = ldr_lit;
+    code[1] = encode_ldr_x(10, 9, 0);
+    code[2] = encode_add_x_imm(10, 10, SVALUE_SIZE);
+    code[3] = encode_str_x(10, 9, 0);
+    code[4] = encode_mov_w_imm(11, T_NUMBER_VAL);
+    code[5] = encode_strh_w(11, 10, SVALUE_TYPE_OFF);
+    code[6] = encode_str_x(31, 10, SVALUE_NUM_OFF);
+    code[7] = encode_ret();
+    *(uint64_t *)&code[8] = (uint64_t)&sp;
+    printf("JIT: emitted F_RETURN_ZERO native code (%zu bytes)\n", code_size);
+    return (void *)code;
+}
+
+/* F_LOCAL: (++sp) = fp[*pc++] — copies raw 16 bytes via LDP/STP */
+void *jit_emit_local(void) {
+    if (!jit_enabled()) return NULL;
+    extern const char *pc;
+    /* 15 instructions + 1 NOP pad + 3 uint64_t literals = 22 words */
+    size_t n_words = 22;
+    size_t code_size = n_words * sizeof(uint32_t);
+    uint32_t *code = (uint32_t *)jit_alloc_code(code_size);
+    if (!code) return NULL;
+    /* Literals at word indices 16-17 (&sp), 18-19 (&fp), 20-21 (&pc) */
+    /* LDR literal imm19 = (lit_word - instr_word) */
+    code[0]  = 0x58000000 | (16 << 5) | 9;   /* LDR X9, [PC,#64] &sp */
+    code[1]  = 0x58000000 | (17 << 5) | 10;  /* LDR X10,[PC,#64] &fp */
+    code[2]  = 0x58000000 | (18 << 5) | 8;   /* LDR X8, [PC,#64] &pc */
+    code[3]  = encode_ldr_x(11, 9, 0);        /* LDR X11,[X9] sp */
+    code[4]  = encode_ldr_x(12, 10, 0);       /* LDR X12,[X10] fp */
+    code[5]  = encode_ldr_x(14, 8, 0);        /* LDR X14,[X8] pc */
+    code[6]  = 0x394001CD;                     /* LDRB W13,[X14] idx */
+    code[7]  = encode_add_x_imm(14, 14, 1);   /* ADD X14,X14,#1 pc++ */
+    code[8]  = encode_str_x(14, 8, 0);         /* STR X14,[X8] store pc */
+    code[9]  = 0x8B2D618C;                     /* ADD X12,X12,X13,LSL#4 */
+    code[10] = encode_add_x_imm(11, 11, SVALUE_SIZE); /* ADD X11,X11,#16 */
+    code[11] = encode_str_x(11, 9, 0);         /* STR X11,[X9] store sp */
+    code[12] = 0xA940018D;                     /* LDP X13,X14,[X12] */
+    code[13] = 0xA900016D;                     /* STP X13,X14,[X11] */
+    code[14] = encode_ret();
+    code[15] = 0xD503201F;                     /* NOP pad */
+    *(uint64_t *)&code[16] = (uint64_t)&sp;
+    *(uint64_t *)&code[18] = (uint64_t)&fp;
+    *(uint64_t *)&code[20] = (uint64_t)&pc;
+    printf("JIT: emitted F_LOCAL native code (%zu bytes)\n", code_size);
+    return (void *)code;
+}
+
+
+/* Emit F_RETURN_ZERO: identical semantics to F_CONST0 (push integer 0) */
+void *jit_emit_return_zero(void);
+
+/* Emit F_LOCAL: load local variable onto stack
+ * Reads 1-byte index from pc, advances pc, loads fp[idx] to ++sp */
+void *jit_emit_local(void);
+
 #else /* !__aarch64__ */
 
 void jit_emit_init(void) {
@@ -133,5 +195,7 @@ void jit_emit_init(void) {
 }
 void *jit_emit_const0(void) { return NULL; }
 void *jit_emit_const1(void) { return NULL; }
+void *jit_emit_return_zero(void) { return NULL; }
+void *jit_emit_local(void) { return NULL; }
 
 #endif /* __aarch64__ */

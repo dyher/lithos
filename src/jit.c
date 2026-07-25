@@ -18,6 +18,7 @@ static int num_templates = 0;
 static jit_function_t functions[JIT_MAX_FUNCTIONS];
 static int num_functions = 0;
 static int jit_is_enabled = 0;
+int jit_dispatch_ready = 0;
 
 /* === Code Pool Management === */
 
