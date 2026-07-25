@@ -54,7 +54,6 @@ add_executable(neolith main.c
     jit.c
     jit_templates.c
     jit_trace.c
-    jit_trace_compile_aarch64.c
 
     ${CMAKE_SOURCE_DIR}/tests/test_fiber_stress.c ${neolith_SOURCES})
 # Create interface target for FFI so all stem consumers get it
@@ -73,4 +72,11 @@ elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "riscv64")
     target_sources(neolith PRIVATE jit_emit_riscv64.c)
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm" AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
     target_sources(neolith PRIVATE jit_emit_arm32.c)
+endif()
+
+# Platform-specific JIT trace compiler (only compile for current architecture)
+if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+    target_sources(neolith PRIVATE jit_trace_compile_aarch64.c)
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
+    target_sources(neolith PRIVATE jit_trace_compile_x86_64.c)
 endif()
