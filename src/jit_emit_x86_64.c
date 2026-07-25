@@ -219,6 +219,63 @@ void *jit_emit_add_int_fast(void) {
     return (void *)code;
 }
 
+/* Shared x86_64 comparison emitter.
+ * setcc byte: 0x0F 0x9C+cond ModRM (AL=dest for simplicity, then MOVZX)
+ * LT (signed less): SETL  = 0x0F 0x9C
+ * EQ (equal):       SETE  = 0x0F 0x94
+ */
+static void *emit_compare_x86(uint8_t setcc_opcode) {
+    if (!jit_enabled()) return NULL;
+    size_t cap = 64;
+    uint8_t *code = (uint8_t *)jit_alloc_code(cap);
+    if (!code) return NULL;
+    x86_emitter_t e = { code, 0, cap };
+    uint64_t sp_addr = (uint64_t)&sp;
+
+    /* movabs rax, &sp */
+    emit_byte(&e, 0x48); emit_byte(&e, 0xB8); emit_le64(&e, sp_addr);
+    /* mov rdx, [rax]           ; sp */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x8B); emit_byte(&e, 0x10);
+    /* mov rcx, [rdx+8]         ; rhs = sp->u.number */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x8B); emit_byte(&e, 0x4A); emit_byte(&e, 0x08);
+    /* mov rsi, [rdx-8]         ; lhs = (sp-1)->u.number */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x8B); emit_byte(&e, 0x72); emit_byte(&e, 0xF8);
+    /* cmp rsi, rcx             ; lhs vs rhs */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x39); emit_byte(&e, 0xCE);
+    /* setcc al                 ; AL = condition result */
+    emit_byte(&e, 0x0F); emit_byte(&e, setcc_opcode); emit_byte(&e, 0xC0);
+    /* movzx eax, al            ; zero-extend to 64-bit */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x0F); emit_byte(&e, 0xB6); emit_byte(&e, 0xC0);
+    /* sub rdx, 16              ; sp-- */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x83); emit_byte(&e, 0xEA); emit_byte(&e, 0x10);
+    /* mov [rax], rdx           ; store sp */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x89); emit_byte(&e, 0x10);
+    /* mov word [rdx], 0x2      ; sp->type = T_NUMBER */
+    emit_byte(&e, 0x66); emit_byte(&e, 0xC7); emit_byte(&e, 0x02);
+    emit_byte(&e, 0x02); emit_byte(&e, 0x00);
+    /* mov [rdx+8], rax         ; sp->u.number = result */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x89); emit_byte(&e, 0x42); emit_byte(&e, 0x08);
+    /* ret */
+    emit_byte(&e, 0xC3);
+
+    return (void *)code;
+}
+
+void *jit_emit_lt_int_fast(void) {
+    void *code = emit_compare_x86(0x9C); /* SETL */
+    if (code) printf("JIT: emitted F_LT_INT_FAST x86_64 native code\n");
+    return code;
+}
+
+void *jit_emit_eq_int_fast(void) {
+    void *code = emit_compare_x86(0x94); /* SETE */
+    if (code) printf("JIT: emitted F_EQ_INT_FAST x86_64 native code\n");
+    return code;
+}
+
+
+void *jit_emit_lt_int_fast(void);
+void *jit_emit_eq_int_fast(void);
 #else /* !__x86_64__ */
 void jit_emit_init(void) { printf("JIT: no x86_64 emitter on this platform\n"); }
 void *jit_emit_const0(void) { return NULL; }
@@ -226,4 +283,6 @@ void *jit_emit_const1(void) { return NULL; }
 void *jit_emit_return_zero(void) { return NULL; }
 void *jit_emit_local(void) { return NULL; }
 void *jit_emit_add_int_fast(void) { return NULL; }
+void *jit_emit_lt_int_fast(void) { return NULL; }
+void *jit_emit_eq_int_fast(void) { return NULL; }
 #endif

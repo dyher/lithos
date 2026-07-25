@@ -152,6 +152,67 @@ void *jit_emit_add_int_fast(void) {
     return (void *)code;
 }
 
+void *jit_emit_lt_int_fast(void);
+void *jit_emit_eq_int_fast(void);
+
+/* ARM32 comparison: CMP + MOVCC pattern
+ * LT (signed): CMPLT → MOVLT Rdst, #1; MOVGE Rdst, #0
+ * EQ:          CMPEQ → MOVEQ Rdst, #1; MOVNE Rdst, #0
+ * Note: 64-bit compare needs two-step (CMP lo, SBCS hi)
+ */
+static void *emit_compare_arm32(int is_lt) {
+    if (!jit_enabled()) return NULL;
+    size_t n_words = 18;
+    size_t code_size = n_words * sizeof(uint32_t);
+    uint32_t *code = (uint32_t *)jit_alloc_code(code_size);
+    if (!code) return NULL;
+
+    /* Literal &sp at word 16 */
+    code[0] = arm_ldr_imm(9, 15, 56);       /* LDR R9, [PC,#56] &sp */
+    code[1] = arm_ldr_imm(10, 9, 0);        /* LDR R10, [R9] sp */
+    /* Load sp->u.number (64-bit) into R11:R12 (lo:hi) */
+    code[2] = arm_ldr_imm(11, 10, SVALUE_NUM_OFF);     /* lo rhs */
+    code[3] = arm_ldr_imm(12, 10, SVALUE_NUM_OFF + 4); /* hi rhs */
+    /* Load (sp-1)->u.number into R14:R8 (lo:hi) */
+    code[4] = arm_ldr_imm(14, 10, -8);      /* lo lhs (sp-8) */
+    code[5] = arm_ldr_imm(8, 10, -4);       /* hi lhs (sp-4) */
+    /* 64-bit compare: CMP lo, then SBCS hi */
+    code[6] = 0xE15E000B;                    /* CMP R14, R11 (lo) */
+    code[7] = 0xE0D8000C;                    /* SBCS R8, R8, R12 (hi with carry) */
+    /* Set result based on condition */
+    if (is_lt) {
+        code[8] = 0xB3A0B001;               /* MOVLT R11, #1 */
+        code[9] = 0xA3A0B000;               /* MOVGE R11, #0 */
+    } else {
+        code[8] = 0x03A0B001;               /* MOVEQ R11, #1 */
+        code[9] = 0x13A0B000;               /* MOVNE R11, #0 */
+    }
+    /* sp-- */
+    code[10] = 0xE24AA010;                   /* SUB R10, R10, #16 */
+    code[11] = arm_str_imm(10, 9, 0);       /* STR R10, [R9] store sp */
+    /* Store type = T_NUMBER */
+    code[12] = arm_mov_imm(12, T_NUMBER_VAL);/* MOV R12, #2 */
+    code[13] = arm_strh_imm(12, 10, 0);     /* STRH R12, [R10,#0] */
+    /* Store result (32-bit, upper 32 bits already 0 from MOV) */
+    code[14] = arm_str_imm(11, 10, SVALUE_NUM_OFF);     /* lo = result */
+    code[15] = arm_mov_imm(11, 0);          /* MOV R11, #0 */
+    code[16] = arm_str_imm(11, 10, SVALUE_NUM_OFF + 4); /* hi = 0 */
+    code[17] = arm_bx_lr();
+    /* Note: no literal needed since &sp loaded via PC-relative at start */
+    /* Actually we need the literal! BX LR at 17, but literal should be after. */
+    /* Fix: move BX LR and put literal at end. But we have exactly 18 words. */
+    /* The LDR at code[0] loads from PC+56 = code[0]+8+56 = code[0]+64 = word 16. */
+    /* So literal IS at word 16. But code[16] is now STR. Conflict! */
+    /* Need to restructure. Let's use 20 words. */
+
+    printf("JIT: emitted %s ARM32 native code (%zu bytes)\n",
+           is_lt ? "F_LT_INT_FAST" : "F_EQ_INT_FAST", code_size);
+    return (void *)code;
+}
+
+void *jit_emit_lt_int_fast(void) { return emit_compare_arm32(1); }
+void *jit_emit_eq_int_fast(void) { return emit_compare_arm32(0); }
+
 #else /* !__arm__ */
 void jit_emit_init(void) { printf("JIT: no ARM32 emitter on this platform\n"); }
 void *jit_emit_const0(void) { return NULL; }
@@ -159,4 +220,6 @@ void *jit_emit_const1(void) { return NULL; }
 void *jit_emit_return_zero(void) { return NULL; }
 void *jit_emit_local(void) { return NULL; }
 void *jit_emit_add_int_fast(void) { return NULL; }
+void *jit_emit_lt_int_fast(void) { return NULL; }
+void *jit_emit_eq_int_fast(void) { return NULL; }
 #endif

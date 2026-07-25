@@ -248,6 +248,64 @@ void *jit_emit_add_int_fast(void) {
     return (void *)code;
 }
 
+void *jit_emit_lt_int_fast(void);
+void *jit_emit_eq_int_fast(void);
+
+/* RV64 comparison: SLT (set less than) or custom EQ via XOR+SLTIU
+ * LT: slt rd, rs1, rs2 (signed less than)
+ * EQ: xor rd, rs1, rs2; sltiu rd, rd, 1 (equal if diff==0)
+ */
+static void *emit_compare_rv64(int is_lt) {
+    if (!jit_enabled()) return NULL;
+    extern const char *pc;
+    size_t n_words = 18;
+    size_t code_size = n_words * sizeof(uint32_t);
+    uint32_t *code = (uint32_t *)jit_alloc_code(code_size);
+    if (!code) return NULL;
+    int i = 0;
+
+    /* Literal &sp at word 16 */
+    int32_t lit_offset = 16 * 4;
+    int32_t hi = (lit_offset + 0x800) >> 12;
+    int32_t lo = lit_offset - (hi << 12);
+
+    code[i++] = rv_lui(5, hi);              /* t0 = &sp addr */
+    code[i++] = rv_ld(5, 5, lo);            /* t0 = &sp */
+    code[i++] = rv_ld(6, 5, 0);             /* t1 = sp */
+    code[i++] = rv_ld(7, 6, 8);             /* t2 = sp->number (rhs) */
+    code[i++] = rv_ld(13, 6, -8);           /* t3 = (sp-1)->number (lhs) */
+    if (is_lt) {
+        /* SLT t4, t3, t2: t4 = (lhs < rhs) ? 1 : 0 */
+        code[i++] = 0x0076AEB3;             /* SLT t4, t3, t2 */
+    } else {
+        /* EQ: XOR t4, t3, t2; SLTIU t4, t4, 1 */
+        code[i++] = 0x0076CEB3;             /* XOR t4, t3, t2 */
+        code[i++] = 0x001EAEB3;             /* SLTIU t4, t4, 1 */
+    }
+    code[i++] = rv_addi(6, 6, -SVALUE_SIZE);/* t1 = sp-- */
+    code[i++] = rv_sd(6, 5, 0);             /* store sp */
+    code[i++] = rv_li(7, T_NUMBER_VAL);     /* t2 = T_NUMBER */
+    code[i++] = rv_sh(7, 6, SVALUE_TYPE_OFF);/* SH t2, 0(t1) type */
+    code[i++] = rv_sd(14, 6, SVALUE_NUM_OFF);/* SD t4, 8(t1) result */
+    code[i++] = rv_ret();
+    code[i++] = rv_nop();                   /* pad */
+    *(uint64_t *)&code[16] = (uint64_t)&sp;
+
+    return (void *)code;
+}
+
+void *jit_emit_lt_int_fast(void) {
+    void *code = emit_compare_rv64(1);
+    if (code) printf("JIT: emitted F_LT_INT_FAST RV64 native code\n");
+    return code;
+}
+
+void *jit_emit_eq_int_fast(void) {
+    void *code = emit_compare_rv64(0);
+    if (code) printf("JIT: emitted F_EQ_INT_FAST RV64 native code\n");
+    return code;
+}
+
 #else /* !__riscv || !RV64 */
 void jit_emit_init(void) { printf("JIT: no RV64 emitter on this platform\n"); }
 void *jit_emit_const0(void) { return NULL; }
@@ -255,4 +313,6 @@ void *jit_emit_const1(void) { return NULL; }
 void *jit_emit_return_zero(void) { return NULL; }
 void *jit_emit_local(void) { return NULL; }
 void *jit_emit_add_int_fast(void) { return NULL; }
+void *jit_emit_lt_int_fast(void) { return NULL; }
+void *jit_emit_eq_int_fast(void) { return NULL; }
 #endif
