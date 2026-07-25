@@ -787,6 +787,17 @@ void eval_instruction (const char *p) {
                       cast.fn();
                       continue;
                   }
+              } else if ((instruction == 51 || instruction == 48) &&
+                         sp->type == T_NUMBER && (sp-1)->type == T_NUMBER) {
+                  /* F_LT(51) / F_EQ(48) integer fast path */
+                  uint8_t marker = (instruction == 51) ? 253 : 252;
+                  jit_template_t *cmp_tmpl = jit_get_template(marker);
+                  if (cmp_tmpl && cmp_tmpl->code_size > sizeof(void *)) {
+                      union { void *obj; void (*fn)(void); } cast;
+                      cast.obj = (void *)cmp_tmpl->code;
+                      cast.fn();
+                      continue;
+                  }
               } else if (instruction == F_ADD && sp >= fp + 1 &&
                          sp->type == T_NUMBER && (sp-1)->type == T_NUMBER) {
                   /* F_ADD integer fast path: inline type guard passed */

@@ -367,6 +367,63 @@ void *jit_emit_branch_when_zero_fast(void) {
     return (void *)code;
 }
 
+/* Comparison helper: both do sp--, load two numbers, compare, store result.
+ * Only difference is the comparison instruction.
+ * Pattern:
+ *   ldr x9, [pc, #lit_sp]      // &sp
+ *   ldr x10, [x9]              // sp
+ *   ldr x11, [x10, #8]         // sp->u.number (rhs)
+ *   ldur x12, [x10, #-8]       // (sp-1)->u.number (lhs)
+ *   cmp x12, x11               // lhs vs rhs
+ *   cset w13, COND             // 1 if condition true, 0 otherwise
+ *   sub x10, x10, #16          // sp--
+ *   str x10, [x9]              // store sp
+ *   mov w14, #T_NUMBER
+ *   strh w14, [x10, #0]        // sp->type = T_NUMBER
+ *   str x13, [x10, #8]         // sp->u.number = result (0 or 1)
+ *   ret
+ *   .quad &sp
+ */
+static void *emit_compare_fast(int cond_opcode) {
+    if (!jit_enabled()) return NULL;
+    size_t n_words = 14; /* 11 instr + 1 pad + 2 literal words */
+    size_t code_size = n_words * sizeof(uint32_t);
+    uint32_t *code = (uint32_t *)jit_alloc_code(code_size);
+    if (!code) return NULL;
+
+    /* Literal &sp at word 12 */
+    code[0]  = 0x58000000 | (12 << 5) | 9;   /* LDR X9, [PC,#48] &sp */
+    code[1]  = encode_ldr_x(10, 9, 0);         /* LDR X10, [X9] sp */
+    code[2]  = encode_ldr_x(11, 10, 8);        /* LDR X11, [X10,#8] rhs */
+    code[3]  = 0xF85F814C;                     /* LDUR X12, [X10,#-8] lhs */
+    code[4]  = 0xEB0B019F;                     /* CMP X12, X11 (SUBS XZR,X12,X11) */
+    /* CSET W13, cond: 0x9A9F07ED | (cond << 12) */
+    code[5]  = 0x9A9F07ED | (cond_opcode << 12); /* CSET W13, COND */
+    code[6]  = 0xD100414A;                     /* SUB X10, X10, #16 (sp--) */
+    code[7]  = encode_str_x(10, 9, 0);         /* STR X10, [X9] store sp */
+    code[8]  = encode_mov_w_imm(14, T_NUMBER_VAL); /* MOVZ W14, #2 */
+    code[9]  = encode_strh_w(14, 10, SVALUE_TYPE_OFF); /* STRH W14, [X10,#0] */
+    code[10] = encode_str_x(13, 10, SVALUE_NUM_OFF);   /* STR X13, [X10,#8] */
+    code[11] = encode_ret();
+    *(uint64_t *)&code[12] = (uint64_t)&sp;
+
+    return (void *)code;
+}
+
+/* LT condition code = 0xB (signed less than) */
+void *jit_emit_lt_int_fast(void) {
+    void *code = emit_compare_fast(0xB);
+    if (code) printf("JIT: emitted F_LT_INT_FAST native code\n");
+    return code;
+}
+
+/* EQ condition code = 0x0 (equal) */
+void *jit_emit_eq_int_fast(void) {
+    void *code = emit_compare_fast(0x0);
+    if (code) printf("JIT: emitted F_EQ_INT_FAST native code\n");
+    return code;
+}
+
 
 /* Emit F_RETURN_ZERO: identical semantics to F_CONST0 (push integer 0) */
 void *jit_emit_return_zero(void);
@@ -385,6 +442,12 @@ void *jit_emit_branch(void);
  * Precondition: caller verified sp->type == T_NUMBER. Pops sp. */
 void *jit_emit_branch_when_zero_fast(void);
 
+/* F_LT_INT_FAST: sp--; sp->number = sp->number < (sp+1)->number */
+void *jit_emit_lt_int_fast(void);
+
+/* F_EQ_INT_FAST: sp--; sp->number = sp->number == (sp+1)->number */
+void *jit_emit_eq_int_fast(void);
+
 #else /* !__aarch64__ */
 
 void jit_emit_init(void) {
@@ -397,5 +460,7 @@ void *jit_emit_local(void) { return NULL; }
 void *jit_emit_add_int_fast(void) { return NULL; }
 void *jit_emit_branch(void) { return NULL; }
 void *jit_emit_branch_when_zero_fast(void) { return NULL; }
+void *jit_emit_lt_int_fast(void) { return NULL; }
+void *jit_emit_eq_int_fast(void) { return NULL; }
 
 #endif /* __aarch64__ */

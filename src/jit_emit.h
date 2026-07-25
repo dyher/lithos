@@ -15,6 +15,8 @@ void *jit_emit_local(void);
 void *jit_emit_add_int_fast(void);
 void *jit_emit_branch(void);
 void *jit_emit_branch_when_zero_fast(void);
+void *jit_emit_lt_int_fast(void);
+void *jit_emit_eq_int_fast(void);
 
 /* Initialize platform-specific emitter. */
 void jit_emit_init(void);

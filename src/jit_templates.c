@@ -158,6 +158,20 @@ void jit_init_templates(void) {
         registered++;
     }
 
+    /* F_LT integer fast path (internal marker 253) */
+    void *lt_code = jit_emit_lt_int_fast();
+    if (lt_code) {
+        jit_register_template(253, (uint8_t *)lt_code, 56, -1, 0);
+        registered++;
+    }
+
+    /* F_EQ integer fast path (internal marker 252) */
+    void *eq_code = jit_emit_eq_int_fast();
+    if (eq_code) {
+        jit_register_template(252, (uint8_t *)eq_code, 56, -1, 0);
+        registered++;
+    }
+
     /* Remaining opcodes still use function pointer templates */
     for (size_t i = 0; i < NUM_TEMPLATE_DEFS; i++) {
         template_def_t *td = &template_defs[i];
@@ -173,5 +187,5 @@ void jit_init_templates(void) {
         registered++;
     }
 
-    printf("JIT: registered %d opcode templates (native: CONST0/1, RET0, LOCAL, ADD, BRANCH, BWZ)\n", registered);
+    printf("JIT: registered %d opcode templates (native: CONST0/1, RET0, LOCAL, ADD, BR, BWZ, LT, EQ)\n", registered);
 }
