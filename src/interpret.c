@@ -10,6 +10,7 @@
 #include "frame.h"
 #include "interpret.h"
 #include "jit.h"
+#include "jit_trace.h"
 #include "simul_efun.h"
 #include "lpc/object.h"
 #include "lpc/array.h"
@@ -796,6 +797,11 @@ void eval_instruction (const char *p) {
                       union { void *obj; void (*fn)(void); } cast;
                       cast.obj = (void *)cmp_tmpl->code;
                       cast.fn();
+                      /* Record into trace if recording */
+                      if (jit_trace_is_recording()) {
+                          /* BWZ was executed natively, record it */
+                          /* offset was already consumed by native code */
+                      }
                       continue;
                   }
               } else if (instruction == F_ADD && sp >= fp + 1 &&
@@ -819,6 +825,15 @@ void eval_instruction (const char *p) {
           }
       }
       jit_skip:;
+      /* JIT: record opcode into active trace */
+      if (jit_trace_is_recording()) {
+          int16_t rec_imm = 0;
+          /* Peek at immediate for opcodes that have one */
+          if (instruction == 61 || instruction == 63) rec_imm = EXTRACT_UCHAR(pc);
+          jit_trace_record(instruction, rec_imm, sp->type, (sp > fp) ? (sp-1)->type : 0);
+          /* Abort trace on side-effecting opcodes (efun calls, etc.) */
+          if (instruction > 100) jit_trace_abort();
+      }
 
       if (!--eval_cost)
         {
@@ -973,6 +988,13 @@ void eval_instruction (const char *p) {
 #endif
         case F_BRANCH:		/* relative offset */
           COPY_SHORT (&offset, pc);
+          /* JIT: record into trace if recording, check hot loop if backward */
+          if (jit_trace_is_recording()) {
+              jit_trace_record(21, offset, sp->type, (sp > fp) ? (sp-1)->type : 0);
+          } else if ((int16_t)offset < 0 && jit_trace_check_hot(pc)) {
+              jit_trace_set_start_pc(pc + offset);
+              jit_trace_start();
+          }
           pc += offset;
           break;
         case F_BBRANCH:	/* relative offset */

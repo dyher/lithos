@@ -24,6 +24,45 @@ static uint32_t next_trace_id = 0;
 /* Minimum trace length to compile (avoid trivial traces) */
 #define TRACE_MIN_LENGTH 8
 
+
+/* Hot loop tracking: map loop_pc → execution count */
+#define MAX_HOT_LOOPS 128
+typedef struct {
+    const char *pc;
+    uint32_t    count;
+} hot_loop_entry_t;
+
+static hot_loop_entry_t hot_loops[MAX_HOT_LOOPS];
+static uint32_t num_hot_loops = 0;
+
+int jit_trace_check_hot(const char *loop_pc) {
+    if (!jit_enabled()) return 0;
+    if (is_recording) return 0; /* already recording */
+
+    /* Find or create entry */
+    for (uint32_t i = 0; i < num_hot_loops; i++) {
+        if (hot_loops[i].pc == loop_pc) {
+            hot_loops[i].count++;
+            if (hot_loops[i].count >= TRACE_HOT_THRESHOLD) {
+                hot_loops[i].count = 0; /* reset after trigger */
+                return 1;
+            }
+            return 0;
+        }
+    }
+    /* New entry */
+    if (num_hot_loops < MAX_HOT_LOOPS) {
+        hot_loops[num_hot_loops].pc = loop_pc;
+        hot_loops[num_hot_loops].count = 1;
+        num_hot_loops++;
+    }
+    return 0;
+}
+
+void jit_trace_set_start_pc(const char *pc) {
+    trace_start_pc = pc;
+}
+
 void jit_trace_init(void) {
     memset(compiled_traces, 0, sizeof(compiled_traces));
     printf("JIT: trace recorder initialized (max %d ops, min %d for compile)\n",

@@ -51,4 +51,14 @@ jit_trace_t *jit_trace_lookup(const char *pc);
 /* Get trace stats for debugging. */
 void jit_trace_stats(void);
 
+
+/* Hot loop detection threshold (executions before attempting trace) */
+#define TRACE_HOT_THRESHOLD   500
+
+/* Record a backward branch execution. Returns 1 if trace should start. */
+int jit_trace_check_hot(const char *loop_pc);
+
+/* Set the start PC for current trace recording. */
+void jit_trace_set_start_pc(const char *pc);
+
 #endif /* LITHOS_JIT_TRACE_H */
