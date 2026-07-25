@@ -67,4 +67,8 @@ if(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL 
     target_sources(neolith PRIVATE jit_emit_aarch64.c)
 elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "AMD64")
     target_sources(neolith PRIVATE jit_emit_x86_64.c)
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "riscv64")
+    target_sources(neolith PRIVATE jit_emit_riscv64.c)
+elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm" AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+    target_sources(neolith PRIVATE jit_emit_arm32.c)
 endif()

@@ -175,10 +175,55 @@ void *jit_emit_local(void) {
     return (void *)code;
 }
 
+
+/* F_ADD_INT_FAST: (sp-1)->u.number += sp->u.number; sp--;
+ * Precondition: caller verified both T_NUMBER.
+ *   movabs rax, <&sp>
+ *   mov    rdx, [rax]          ; sp
+ *   mov    rcx, [rdx+8]        ; sp->u.number
+ *   mov    rsi, [rdx-8]        ; (sp-1)->u.number
+ *   add    rsi, rcx            ; result
+ *   sub    rdx, 16             ; sp--
+ *   mov    [rax], rdx          ; store sp
+ *   mov    [rdx+8], rsi        ; sp->u.number = result
+ *   ret
+ */
+void *jit_emit_add_int_fast(void) {
+    if (!jit_enabled()) return NULL;
+    size_t cap = 64;
+    uint8_t *code = (uint8_t *)jit_alloc_code(cap);
+    if (!code) return NULL;
+    x86_emitter_t e = { code, 0, cap };
+    uint64_t sp_addr = (uint64_t)&sp;
+
+    /* movabs rax, &sp */
+    emit_byte(&e, 0x48); emit_byte(&e, 0xB8); emit_le64(&e, sp_addr);
+    /* mov rdx, [rax] */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x8B); emit_byte(&e, 0x10);
+    /* mov rcx, [rdx+8] */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x8B); emit_byte(&e, 0x4A); emit_byte(&e, 0x08);
+    /* mov rsi, [rdx-8] : REX.W 8B 72 F8 */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x8B); emit_byte(&e, 0x72); emit_byte(&e, 0xF8);
+    /* add rsi, rcx */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x01); emit_byte(&e, 0xCE);
+    /* sub rdx, 16 */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x83); emit_byte(&e, 0xEA); emit_byte(&e, 0x10);
+    /* mov [rax], rdx */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x89); emit_byte(&e, 0x10);
+    /* mov [rdx+8], rsi */
+    emit_byte(&e, 0x48); emit_byte(&e, 0x89); emit_byte(&e, 0x72); emit_byte(&e, 0x08);
+    /* ret */
+    emit_byte(&e, 0xC3);
+
+    printf("JIT: emitted F_ADD_INT_FAST x86_64 native code (%zu bytes)\n", e.len);
+    return (void *)code;
+}
+
 #else /* !__x86_64__ */
 void jit_emit_init(void) { printf("JIT: no x86_64 emitter on this platform\n"); }
 void *jit_emit_const0(void) { return NULL; }
 void *jit_emit_const1(void) { return NULL; }
 void *jit_emit_return_zero(void) { return NULL; }
 void *jit_emit_local(void) { return NULL; }
+void *jit_emit_add_int_fast(void) { return NULL; }
 #endif
