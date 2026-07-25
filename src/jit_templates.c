@@ -3,6 +3,7 @@
 #include <config.h>
 #endif
 #include "jit_templates.h"
+#include "jit_emit.h"
 #include "interpret.h"
 #include "../lib/lpc/svalue.h"
 #include "../lib/lpc/types.h"
@@ -106,21 +107,37 @@ static template_def_t template_defs[] = {
 void jit_init_templates(void) {
     if (!jit_enabled()) return;
 
+    jit_emit_init();
+
     int registered = 0;
+
+    /* J2: Emit true native code for CONST0 and CONST1 */
+    void *const0_code = jit_emit_const0();
+    if (const0_code) {
+        jit_register_template(15, (uint8_t *)const0_code, 72, +1, 0);
+        registered++;
+    }
+
+    void *const1_code = jit_emit_const1();
+    if (const1_code) {
+        jit_register_template(16, (uint8_t *)const1_code, 80, +1, 0);
+        registered++;
+    }
+
+    /* Remaining opcodes still use function pointer templates */
     for (size_t i = 0; i < NUM_TEMPLATE_DEFS; i++) {
         template_def_t *td = &template_defs[i];
-        /* For J1b: register the function pointer as a "code" template.
-         * The template's "code" is just the function pointer itself.
-         * True native code emission comes in J2. */
+        /* Skip CONST0/CONST1 - already registered with native code */
+        if (td->opcode == 15 || td->opcode == 16) continue;
         jit_register_template(
             td->opcode,
-            (uint8_t *)(uintptr_t)td->fn,  /* store fn ptr as code */
-            sizeof(template_fn_t),          /* size = pointer size */
+            (uint8_t *)(uintptr_t)td->fn,
+            sizeof(template_fn_t),
             td->stack_delta,
             td->has_side_effect
         );
         registered++;
     }
 
-    printf("JIT: registered %d opcode templates\n", registered);
+    printf("JIT: registered %d opcode templates (native: CONST0, CONST1)\n", registered);
 }
