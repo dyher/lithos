@@ -13,6 +13,9 @@
 
 #ifdef HAVE_DLSYM
 #include <dlfcn.h>
+#ifndef RTLD_DEFAULT
+#define RTLD_DEFAULT ((void *)0)
+#endif
 #endif
 
 /*
@@ -266,7 +269,6 @@ void f_ffi_free(void)
         /* Try common header sizes: sizeof(void*) or max alignment */
         size_t header_size = sizeof(void*);
         /* Check if type pointer at this offset is valid by looking up its name */
-        lj_ffi_type_t **tp = (lj_ffi_type_t**)((uint8_t*)buf - header_size);
         /* Validate: check if the stored pointer looks like a registered type */
         /* For safety, just use sizeof(void*) as header — matches ffi_new */
         free((uint8_t*)buf - header_size);

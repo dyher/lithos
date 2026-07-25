@@ -2,41 +2,34 @@ name: Build & Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
 
 permissions:
   contents: write
 
 jobs:
-  # ---------- Linux: 4 platforms, all on fast x86 runner ----------
+  # ---------- Linux: 4 platforms, all cross-compile on fast x86 runner ----------
   linux:
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: linux-x86_64
-            arch: x86_64
-            cross: ""
-          - name: linux-aarch64
-            arch: aarch64
-            cross: aarch64-linux-gnu
-          - name: linux-riscv64
-            arch: riscv64
-            cross: riscv64-linux-gnu
-          - name: linux-armhf
-            arch: arm
-            cross: arm-linux-gnueabihf
+          - { name: linux-x86_64,  arch: x86_64,  cross: "" }
+          - { name: linux-aarch64, arch: aarch64, cross: aarch64-linux-gnu }
+          - { name: linux-riscv64, arch: riscv64, cross: riscv64-linux-gnu }
+          - { name: linux-armhf,   arch: arm,     cross: arm-linux-gnueabihf }
     runs-on: ubuntu-22.04
-    timeout-minutes: 25
+    timeout-minutes: 30
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - name: Install cross toolchain
         if: matrix.cross != ''
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ${{ matrix.cross }}-gcc ${{ matrix.cross }}-g++
+          set -x
+          sudo apt-get update -y -o Acquire::Retries=5 || true
+          sudo apt-get install -y -o Acquire::Retries=5 --no-install-recommends \
+            ${{ matrix.cross }}-gcc ${{ matrix.cross }}-g++
       - name: Configure
         run: |
           if [ -n "${{ matrix.cross }}" ]; then
@@ -60,18 +53,21 @@ jobs:
           name: neolith-${{ matrix.name }}
           path: out/neolith-${{ matrix.name }}
 
-  # ---------- Windows x86_64 ----------
+  # ---------- Windows x86_64 (best-effort: MSVC POSIX porting is WIP) ----------
   windows:
     runs-on: windows-2022
-    timeout-minutes: 25
+    timeout-minutes: 30
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+      - name: Install bison/flex
+        run: choco install winflexbison3 -y --no-progress
+      - name: Configure
+        shell: cmd
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64
       - name: Build
         shell: cmd
-        run: |
-          cmake -B build -G "Visual Studio 17 2022" -A x64
-          cmake --build build --config Release --parallel
+        run: cmake --build build --config Release --parallel
       - name: Package
         shell: cmd
         run: |
@@ -85,13 +81,19 @@ jobs:
   # ---------- macOS Apple Silicon ----------
   macos:
     runs-on: macos-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Build
+      - name: Install libffi
+        run: brew install libffi
+      - name: Configure + Build
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          LIBFFI_PREFIX=$(brew --prefix libffi)
+          export CFLAGS="-I$LIBFFI_PREFIX/include"
+          export LDFLAGS="-L$LIBFFI_PREFIX/lib"
+          export PKG_CONFIG_PATH="$LIBFFI_PREFIX/lib/pkgconfig"
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$LIBFFI_PREFIX"
           cmake --build build -j$(sysctl -n hw.ncpu)
       - name: Package
         run: |
@@ -114,11 +116,13 @@ jobs:
           pattern: neolith-*
           merge-multiple: true
           path: bins
-      - name: List binaries
+      - name: Inspect
+        id: check
         run: |
-          ls -la bins/
-          chmod +x bins/* 2>/dev/null || true
+          ls -la bins/ || true
+          if compgen -G "bins/*" > /dev/null; then echo "has=1" >> $GITHUB_OUTPUT; else echo "has=0" >> $GITHUB_OUTPUT; fi
       - uses: softprops/action-gh-release@v2
+        if: steps.check.outputs.has == '1'
         with:
           tag_name: ${{ github.ref_name }}
           files: bins/*
