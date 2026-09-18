@@ -1,0 +1,3 @@
+[submodule "mudlib_ro"]
+	path = mudlib_ro
+	url = git@github.com:dyher/mudlib_ro.git
