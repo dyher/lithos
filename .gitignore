@@ -20,3 +20,8 @@ Thumbs.db
 # Temp / Test
 /tmp/
 *.log
+mudlib_es2/
+mudlib_es2_official/
+build-rel/
+*.o
+*.b
