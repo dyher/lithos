@@ -4,6 +4,7 @@
 
 #define SUPPRESS_COMPILER_INLINES
 #include "std.h"
+#include "lpc/gc.h"
 #include "rc/rc.h"
 #include "command.h"
 #include "frame.h"
@@ -486,6 +487,7 @@ object_t* load_object (const char *name_or_path, const char *pre_text) {
   ob->name = alloc_cstring (otable_name, "load_object");
   
   ob->prog = prog;
+  ob->gc_color = GC_WHITE;
   ob->flags |= O_WILL_RESET;	/* must be before reset is first called */
   ob->next_all = obj_list;
   obj_list = ob;

@@ -86,6 +86,9 @@ while(fr<=csp){
 if(fr->ob&&!(fr->ob->flags&O_DESTRUCTED))gc_gray_push(fr->ob,3);
 if(fr->prev_ob&&!(fr->prev_ob->flags&O_DESTRUCTED))gc_gray_push(fr->prev_ob,3);
 fr++;}}}
+    /* Mark fiber stacks as roots */
+    extern void gc_mark_fiber_roots(void);
+    gc_mark_fiber_roots();
 {extern svalue_t*sp;extern svalue_t*fp;
 if(sp&&fp&&sp>=fp){svalue_t*sv=fp;
 while(sv<=sp){mark_sv(sv);sv++;}}}

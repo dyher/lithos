@@ -38,13 +38,13 @@ set(stem_SOURCES
     stralloc.c
 )
 add_library(stem OBJECT ${stem_SOURCES})
-target_link_libraries(stem PUBLIC port logger misc lpc efuns rc socket curl async neolith_spatial)
+target_link_libraries(stem PUBLIC sqlite3 port logger misc lpc efuns rc socket curl async neolith_spatial)
 if(TARGET c-ares::cares)
 	target_compile_definitions(stem PRIVATE CARES_NO_DEPRECATED)
-    target_link_libraries(stem PUBLIC c-ares::cares)
+    target_link_libraries(stem PUBLIC sqlite3 c-ares::cares)
 endif()
 if(HAVE_LIBM)
-    target_link_libraries(stem PUBLIC m)
+    target_link_libraries(stem PUBLIC sqlite3 m)
 endif()
 target_include_directories(stem PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}) # for unit-tests
 
