@@ -593,3 +593,14 @@ mixed aoi_get_visible(int, int);
 
 /* AOI: get_delta(handle, entity_id) -> mapping */
 mixed aoi_get_delta(int, int);
+
+
+
+
+
+
+
+
+int sqlite3_open(string);
+int sqlite3_exec(int, string);
+void sqlite3_close(int);

@@ -1,3 +1,5 @@
+find_package(SQLite3 REQUIRED)
+
 # lib/efuns/CMakeLists.txt
 
 set(efuns_SOURCES
@@ -30,6 +32,7 @@ set(efuns_SOURCES
     unsorted.c
     variable.c
     ffi.c
+    sqlite3.c
 )
 
 add_library(efuns STATIC ${efuns_SOURCES})
@@ -44,7 +47,7 @@ if(PACKAGE_SOCKETS)
     target_link_libraries(efuns PRIVATE socket)
 endif()
 
-target_link_libraries(efuns PUBLIC port misc logger lpc rc curl)
+target_link_libraries(efuns PUBLIC port misc logger lpc rc curl SQLite::SQLite3)
 
 if(HAVE_BOOST_JSON_HPP)
     if(TARGET Boost::json)
