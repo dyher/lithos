@@ -19,6 +19,7 @@
 #include "src/std.h"
 #include "src/interpret.h"
 #include "src/stralloc.h"
+#include "lib/lpc/array.h"
 #include "rc/rc.h"
 
 // LPC: int sqlite3_open(string path);
@@ -56,6 +57,46 @@ void f_sqlite3_exec(void) {
 }
 
 // LPC: void sqlite3_close(int db_handle);
+
+// string sqlite3_query(int db_handle, string sql)
+// 返回格式: "header1\theader2\nval1\tval2"
+void f_sqlite3_query(void) {
+    sqlite3 *db = (sqlite3*)(intptr_t)(sp-1)->u.number;
+    const char *sql = SVALUE_STRPTR(sp);
+    char **results = NULL;
+    int rows, cols;
+    char *err_msg = 0;
+    char buffer[8192]; // 假設結果不會太大
+    int offset = 0;
+
+    if (sqlite3_get_table(db, sql, &results, &rows, &cols, &err_msg) != SQLITE_OK) {
+        pop_n_elems(2);
+        push_malloced_string(string_copy("ERROR", "f_sqlite3_query"));
+        return;
+    }
+
+    buffer[0] = '\0';
+    // 1. 寫入表頭
+    for (int i = 0; i < cols; i++) {
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%s%s", results[i], (i < cols - 1) ? "\t" : "");
+    }
+    offset += snprintf(buffer + offset, sizeof(buffer) - offset, "\n");
+
+    // 2. 寫入數據行
+    for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+            int idx = (r + 1) * cols + c;
+            offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%s%s", results[idx] ? results[idx] : "NULL", (c < cols - 1) ? "\t" : "");
+        }
+        if (r < rows - 1) offset += snprintf(buffer + offset, sizeof(buffer) - offset, "\n");
+    }
+    
+    sqlite3_free_table(results);
+    
+    pop_n_elems(2);
+    push_malloced_string(string_copy(buffer, "f_sqlite3_query"));
+}
+
 void f_sqlite3_close(void) {
     sqlite3 *db = (sqlite3*)(intptr_t)sp->u.number;
     if (db) sqlite3_close(db);

@@ -608,3 +608,9 @@ void sqlite3_close(int);
 
 string sha1(string);
 string websocket_accept(string);
+
+
+int start_http_request(string, string, string);
+mixed poll_http_result(int);
+
+string sqlite3_query(int, string);
