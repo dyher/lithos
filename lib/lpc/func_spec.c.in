@@ -604,3 +604,7 @@ mixed aoi_get_delta(int, int);
 int sqlite3_open(string);
 int sqlite3_exec(int, string);
 void sqlite3_close(int);
+
+
+string sha1(string);
+string websocket_accept(string);
