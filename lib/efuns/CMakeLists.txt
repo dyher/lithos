@@ -1,3 +1,7 @@
+find_package(CURL REQUIRED)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 find_package(SQLite3 REQUIRED)
 
 # lib/efuns/CMakeLists.txt
@@ -34,6 +38,8 @@ set(efuns_SOURCES
     ffi.c
     sqlite3.c
     crypto.c
+    http_client.c
+    http_client_worker.cpp
 )
 
 add_library(efuns STATIC ${efuns_SOURCES})
@@ -48,7 +54,7 @@ if(PACKAGE_SOCKETS)
     target_link_libraries(efuns PRIVATE socket)
 endif()
 
-target_link_libraries(efuns PUBLIC port misc logger lpc rc curl SQLite::SQLite3 OpenSSL::Crypto)
+target_link_libraries(efuns PUBLIC port misc logger lpc rc curl SQLite::SQLite3 OpenSSL::Crypto CURL::libcurl Threads::Threads)
 
 if(HAVE_BOOST_JSON_HPP)
     if(TARGET Boost::json)
