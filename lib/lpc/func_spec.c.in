@@ -602,7 +602,7 @@ mixed aoi_get_delta(int, int);
 
 
 int sqlite3_open(string);
-int sqlite3_exec(int, string);
+mixed sqlite3_exec(int, string);
 void sqlite3_close(int);
 
 
